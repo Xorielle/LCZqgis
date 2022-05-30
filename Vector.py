@@ -21,16 +21,18 @@ Myrtille Grulois − May 2022
 
 #from osgeo import gdal, osr
 import numpy as np
+import Matrix
 
 
 ##########################################
 #         PARAMETERS TO COMPLETE         #
 ##########################################
 
-spath_to_folder = '/home/xorielle/Desktop/Stage/NUDAPT/TestCommandes/' #Where the layers are on the computer
+spath_to_folder = '/home/xorielle/Desktop/Stage/NUDAPT/TestCommandes/MVE' #Where the layers are on the computer
 sfile_format = '.shp'
-layers_name = ['Statistics'] #First name should be the one of the vector layer which will contain the LCZ at the end
+tslayers_name = ['Grid20', 'HEIGHT'] #First name should be the one of the vector layer which will contain the LCZ at the end, then rasters: mean height
 resolution = 100
+itotalnb_rasters = 1
 
 
 ###########################################
@@ -45,7 +47,14 @@ def createPath(rasters_name, pos):
 def getLayer(sname):
     """Return the layer thanks to its exact name"""
     return(QgsProject.instance().mapLayersByName(sname)[0])
-    
+
+def verifExtent(qextent0, qextent2, bextent):
+    """Check if to extent are the same, considering previous extents are all matching. Else, return False."""
+    if bextent==True:
+        return(qextent0==qextent2)
+    else:
+        return(bextent)
+
 def getCoordinates(x, y):
     """Return the coordinates corresponding to the cell located in the x line and y column"""
     return(ixmin+x*resolution, iymin+y*resolution)
@@ -64,10 +73,10 @@ def getRasterContent(raster,x,y):
 dlayers = QgsProject.instance().mapLayers()
 
 #Get the layer that we will edit, and the names of its fields in a list
-vlayer = getLayer(layers_name[0])
+vlayer = getLayer(tslayers_name[0])
 tslayerlcz_field_names = vlayer.fields().names()
 
-#Get the index corresponding to the coordinates of each cell in the layer
+#Get the index of the attributes corresponding to the coordinates of each cell in the layer
 tsfield_names = ['left', 'right', 'top', 'bottom']
 ilen_fields = len(tsfield_names)
 tifield_index = [0]*ilen_fields #Store the index
@@ -80,26 +89,103 @@ for i in range (0, ilen_fields):
         print("WARNING: Index {i} not found".format(i=i))
 
 #Check that the vlayer can be edited
-tscaps_check = ['ChangeAttributeValues']
 vcaps = vlayer.dataProvider().capabilities()
+try:
+    print("Verification of capabilies in processing...")
+    if vcaps & QgsVectorDataProvider.ChangeAttributeValues:
+        print('The layer supports the modification of attribute values')
+    else:
+        print('WARNING: the layer does NOT support the modification of attribute values')
+    if vcaps & QgsVectorDataProvider.AddAttributes:
+        print('The layer supports the adding of new attributes')
+    else:
+        print('WARNING: the layer does NOT support the adding of new attributes')
+except:
+    print("WARNING: no verification of capacities done")
 
-if vcaps & QgsVectorDataProvider.ChangeAttributeValues:
-    print('The layer supports the modification of attribute values')
-else:
-    print('WARNING: the layer does NOT support the modification of attribute values')
-if vcaps & QgsVectorDataProvider.AddAttributes:
-    print('The layer supports the adding of new attributes')
-else:
-    print('WARNING: the layer does NOT support the adding of new attributes')
-
-#Create the new column (where the int corresponding to LCZ will be stored)
+#Create new columns (where the int corresponding to local LCZ (choices 1, 2 and 3) will be stored)
 vlayer_provider=vlayer.dataProvider()
 try:
-    vlayer_provider.addAttributes([QgsField("LCZ",QVariant.Int)])
+    vlayer_provider.addAttributes([QgsField("LCZ_c1",QVariant.Int)])
     vlayer.updateFields()
-    print ("Field LCZ created")
+    print ("Field LCZ_c1 created")
+    vlayer_provider.addAttributes([QgsField("LCZ_c2",QVariant.Int)])
+    vlayer.updateFields()
+    print ("Field LCZ_c2 created")
+    vlayer_provider.addAttributes([QgsField("LCZ_c3",QVariant.Int)])
+    vlayer.updateFields()
+    print ("Field LCZ_c3 created")
 except:
-    print("WARNING: the field LCZ could not be created")
+    print("WARNING: the fields LCZ could not be created")
+
+#Create the fourth new column (where the int corresponding to final LCZ will be stored, meaning after verification that the considered zone is wide enough)
+try:
+    vlayer_provider.addAttributes([QgsField("LCZ_final",QVariant.Int)])
+    vlayer.updateFields()
+    print ("Field LCZ_final created")
+except:
+    print("WARNING: the field LCZ_final could not be created")
+
+
+###########################################
+#                  Main                   #
+#       Preparation of raster layers      #
+###########################################
+
+#Verify that the length of all lists containing rasters is the same
+#FIXME: add all lists
+longueur = ((itotalnb_rasters+1)==len(tslayers_name))
+if longueur:
+    print("Les longueurs ont l'air de correspondre, vérifier dans la définition des fonctions.")
+else:
+    print("WARNING: lenghts are not all the same!")
+
+# Preparing tables to store the layers and parameters
+trrasters = [None]*(itotalnb_rasters+1)
+tirasters_height = [0]*(itotalnb_rasters+1)
+tirasters_width = [0]*(itotalnb_rasters+1)
+tqrasters_extent = [None]*(itotalnb_rasters+1)
+
+# Get all raster layers
+try:
+    for i in range(1, itotalnb_rasters+1):
+        trrasters[i] = getLayer(tslayers_name[i])
+    print("Layers imported successfully")
+except:
+    print("WARNING: Layers could not be imported")
+
+# Get size, position and extent of each raster 
+try:
+    for i in range(1, itotalnb_rasters+1):
+        tirasters_height[i] = trrasters[i].height()#Full height and width of the raster in QGIS unit (i.e. meters here)
+        tirasters_width[i] = trrasters[i].width()
+        tqrasters_extent[i] = trrasters[i].extent()#Extent in QGIS extent format
+    print("Shape of layers correctly stored")
+except:
+    print("WARNING: Something went wrong when importing the shape of the layers")
+
+# Get geometry of first raster layer
+try:
+    isize = int(trrasters[1].height()/resolution)
+    qextent0 = trrasters[1].extent()
+    #Get the position of layer (useful for geotransform later)
+    ixmax = qextent0.xMaximum()
+    iymax = qextent0.yMaximum()
+    ixmin = qextent0.xMinimum()
+    iymin = qextent0.yMinimum()
+    print("Geometry parameters of first raster layer imported successfully")
+except:
+    print("WARNING: geomotry parameters of first raster layer not imported")
+
+# Check if the layers have same shape, size and position
+try:
+    bextent = True
+    for i in range(1, itotalnb_rasters):
+        qextent2 = tqrasters_extent[i]
+        bextent = verifExtent(qextent0, qextent2, bextent)
+    print("All layers have same shape: {b}".format(b = bextent))
+except:
+    print("WARNING: Something went wrong during the verification of layers extent")
 
 
 ###########################################
@@ -107,38 +193,22 @@ except:
 #      Edit each cell of vector layer     #
 ###########################################
 
-# Get raster value
-try:
-    rlayer = getLayer("ALTEZZA MEDIA")
-    isize = int(rlayer.height()/resolution)
-    qextent0 = rlayer.extent()
-    #Get the position of layer (useful for geotransform later)
-    ixmax = qextent0.xMaximum()
-    iymax = qextent0.yMaximum()
-    ixmin = qextent0.xMinimum()
-    iymin = qextent0.yMinimum()#Does not work
-#caps = vlayer.capabilities()
-#if caps & QgsVectorDataProvider.DeleteFeatures:
-#    print('The layer supports DeleteFeatures')
-    print("First layer imported successfully")
-except:
-    print("WARNING: Raster layer not imported")
-    
-    
+
+
 #UPDATING/ADD ATTRIBUTE VALUE
 features=vlayer.getFeatures()
 #for f in features:
 #    print ("f : {f}, attributes: {a}".format(f = f, a = f.attributes()))
-vlayer.startEditing()
-for f in features:
-    id=f.id()
-    attr_value={7:43}
-    vlayer_provider.changeAttributeValues({id:attr_value})
-vlayer.commitChanges()
+#vlayer.startEditing()
+#for f in features:
+#    id=f.id()
+#    attr_value={7:43}
+#    vlayer_provider.changeAttributeValues({id:attr_value})
+#vlayer.commitChanges()
 
 #DELETE FIELD
 #layer_provider.deleteAttributes([8])
-#vlayer.updateFields()
+#vlayer.updatALTEZZA MEDIAeFields()
 
 ##########################################
 # If you are working inside QGIS (either from the console
