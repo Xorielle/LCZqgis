@@ -8,6 +8,7 @@ Execute it after opening it in the editor, or directly copy-paste it in the QGIS
  - Code foreseen for square one-band rasters. Some changes have to be done if it is not the case.
  - If used on Windows: change function createPath
  - Preliminary: a grid vector layer of same dimensions and resolution than the raster layers should be created by hand.
+ - Copy the Matrix.py file directly in the folder containing the QGIS project
 
 Tips:
 Often, the first letter of a variable indicates its type: i=int, f=float, t=table(list − one t for each dimension, eventually followed by the letter corresponding to the type), v=vector layer, r=raster layer, s=string, q=qgis specific object.
@@ -76,18 +77,6 @@ dlayers = QgsProject.instance().mapLayers()
 vlayer = getLayer(tslayers_name[0])
 tslayerlcz_field_names = vlayer.fields().names()
 
-#Get the index of the attributes corresponding to the coordinates of each cell in the layer
-tsfield_names = ['left', 'right', 'top', 'bottom']
-ilen_fields = len(tsfield_names)
-tifield_index = [0]*ilen_fields #Store the index
-print("Looking for the index of the cell position in vector layer...")
-for i in range (0, ilen_fields):
-    try:
-        tifield_index[i] = tslayerlcz_field_names.index(tsfield_names[i])
-        print("Index {i} found".format(i=i))
-    except:
-        print("WARNING: Index {i} not found".format(i=i))
-
 #Check that the vlayer can be edited
 vcaps = vlayer.dataProvider().capabilities()
 try:
@@ -95,13 +84,13 @@ try:
     if vcaps & QgsVectorDataProvider.ChangeAttributeValues:
         print('The layer supports the modification of attribute values')
     else:
-        print('WARNING: the layer does NOT support the modification of attribute values')
+        print("'WARNING: the layer does NOT support the modification of attribute values")
     if vcaps & QgsVectorDataProvider.AddAttributes:
         print('The layer supports the adding of new attributes')
     else:
-        print('WARNING: the layer does NOT support the adding of new attributes')
+        print("'WARNING: the layer does NOT support the adding of new attributes")
 except:
-    print("WARNING: no verification of capacities done")
+    print("'WARNING: no verification of capacities done")
 
 #Create new columns (where the int corresponding to local LCZ (choices 1, 2 and 3) will be stored)
 vlayer_provider=vlayer.dataProvider()
@@ -116,7 +105,7 @@ try:
     vlayer.updateFields()
     print ("Field LCZ_c3 created")
 except:
-    print("WARNING: the fields LCZ could not be created")
+    print("'WARNING: the fields LCZ could not be created")
 
 #Create the fourth new column (where the int corresponding to final LCZ will be stored, meaning after verification that the considered zone is wide enough)
 try:
@@ -124,7 +113,7 @@ try:
     vlayer.updateFields()
     print ("Field LCZ_final created")
 except:
-    print("WARNING: the field LCZ_final could not be created")
+    print("'WARNING: the field LCZ_final could not be created")
 
 
 ###########################################
@@ -136,9 +125,9 @@ except:
 #FIXME: add all lists
 longueur = ((itotalnb_rasters+1)==len(tslayers_name))
 if longueur:
-    print("Les longueurs ont l'air de correspondre, vérifier dans la définition des fonctions.")
+    print("Les longueurs semblent correspondre, vérifier dans la définition des fonctions.")
 else:
-    print("WARNING: lenghts are not all the same!")
+    print("'WARNING: lenghts are not all the same!")
 
 # Preparing tables to store the layers and parameters
 trrasters = [None]*(itotalnb_rasters+1)
@@ -152,7 +141,7 @@ try:
         trrasters[i] = getLayer(tslayers_name[i])
     print("Layers imported successfully")
 except:
-    print("WARNING: Layers could not be imported")
+    print("'WARNING: Layers could not be imported")
 
 # Get size, position and extent of each raster 
 try:
@@ -162,7 +151,7 @@ try:
         tqrasters_extent[i] = trrasters[i].extent()#Extent in QGIS extent format
     print("Shape of layers correctly stored")
 except:
-    print("WARNING: Something went wrong when importing the shape of the layers")
+    print("'WARNING: Something went wrong when importing the shape of the layers")
 
 # Get geometry of first raster layer
 try:
@@ -175,7 +164,7 @@ try:
     iymin = qextent0.yMinimum()
     print("Geometry parameters of first raster layer imported successfully")
 except:
-    print("WARNING: geomotry parameters of first raster layer not imported")
+    print("'WARNING: geomotry parameters of first raster layer not imported")
 
 # Check if the layers have same shape, size and position
 try:
@@ -185,15 +174,34 @@ try:
         bextent = verifExtent(qextent0, qextent2, bextent)
     print("All layers have same shape: {b}".format(b = bextent))
 except:
-    print("WARNING: Something went wrong during the verification of layers extent")
+    print("'WARNING: Something went wrong during the verification of layers extent")
+
+# Get size of layer and check if square
+iheight = tirasters_height[0]
+iwidth = tirasters_width[0]
+if iheight != iwidth:
+    print("'WARNING: Layers are not squares, something will go wrong. You have to modify the layers (or the program)")
+else:
+    print("Square rasters, the rest of the programm should go well")
 
 
 ###########################################
 #                  Main                   #
-#      Edit each cell of vector layer     #
+#    Compute LCZ for each vector cell     #
 ###########################################
 
+# This first part of the computation aims to find for each cell of the vector layer which are the three LCZ the more probable.
 
+features=vlayer.getFeatures()
+
+# Go through all cells of vector layer
+for cell in features:
+    x = (cell['left'] + cell['right']) /2
+    y = (cell['top'] + cell['bottom']) /2
+    print(x,y)
+
+
+print("End of script, check for WARNINGs...")
 
 #UPDATING/ADD ATTRIBUTE VALUE
 features=vlayer.getFeatures()
@@ -208,7 +216,7 @@ features=vlayer.getFeatures()
 
 #DELETE FIELD
 #layer_provider.deleteAttributes([8])
-#vlayer.updatALTEZZA MEDIAeFields()
+#vlayer.updateFields()
 
 ##########################################
 # If you are working inside QGIS (either from the console
@@ -221,12 +229,10 @@ features=vlayer.getFeatures()
 #if iface.mapCanvas().isCachingEnabled():
 #    layer.triggerRepaint()
 #else:
-#    iface.mapCanvas().refresh()It is possible to either change feature’s geometry or to change some attributes. The following example first changes values of attributes with index 0 and 1, then it changes the feature’s geometry.
+#    iface.mapCanvas().refresh()
 
 ###########################################
-# It is possible to either change feature’s geometry or to
-#change some attributes. The following example changes values
-#of attributes with index 0 and 1
+# It is possible to either change feature’s geometry or to change some attributes. The following example changes values of attributes with index 0 and 1
 
 #fid = 100   # ID of the feature we will modify
 #if caps & QgsVectorDataProvider.ChangeAttributeValues:
@@ -246,3 +252,20 @@ features=vlayer.getFeatures()
 #PRINT STRING OF ALL CAPABILITIES (WORDS SEPARED BY SPACES AND CAPABILITIES BY COMMA)
 #caps_string = vlayer.dataProvider().capabilitiesString()
 #print(caps_string)
+
+
+########################################
+#Retrieving index of an attribute using its name
+
+# NO NEED TO USE THE INDEXES, NAME CAN BE USED DIRECTLY
+#Get the index of the attributes corresponding to the coordinates of each cell in the layer
+#tsfield_names = ['left', 'right', 'top', 'bottom']
+#ilen_fields = len(tsfield_names)
+#tifield_index = [0]*ilen_fields #Store the index
+#print("Looking for the index of the cell position in vector layer...")
+#for i in range (0, ilen_fields):
+#    try:
+#        tifield_index[i] = tslayerlcz_field_names.index(tsfield_names[i])
+#        print("Index {i} found".format(i=i))
+#    except:
+#        print("'WARNING: Index {i} not found".format(i=i))
