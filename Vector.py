@@ -64,6 +64,19 @@ def getRasterContent(raster,x,y):
     """Return the content (qgis object) of the pixel (x,y) in the raster"""
     return(raster.dataProvider().identify(QgsPointXY(x,y), QgsRaster.IdentifyFormatValue))
 
+def getLCZ():
+    """FIXME: function to complete"""
+    return(0, 0, 0)
+
+def getIndex(vlayer, tsnames):
+    """Use a list of strings of name of features in entry to return the list of corresponding indexes"""
+    ilist = [0]*len(tsnames)
+    for i in range(0, len(tsnames)):
+        field_index = vlayer.fields().indexFromName(tsnames[i])
+        if field_index == -1:
+            print("'WARNING: some fields not found in vector layer")
+        ilist[i] = field_index
+    return(ilist)
 
 ###########################################
 #                  Main                   #
@@ -104,6 +117,7 @@ try:
     vlayer_provider.addAttributes([QgsField("LCZ_c3",QVariant.Int)])
     vlayer.updateFields()
     print ("Field LCZ_c3 created")
+    tsname_choices = ['LCZ_c1', 'LCZ_c2', 'LCZ_c3']#used later to retrieve the index when editing the vector layer
 except:
     print("'WARNING: the fields LCZ could not be created")
 
@@ -112,6 +126,7 @@ try:
     vlayer_provider.addAttributes([QgsField("LCZ_final",QVariant.Int)])
     vlayer.updateFields()
     print ("Field LCZ_final created")
+    tsname_final = ['LCZ_final']#used later to retrieve the index when editing the vector layer
 except:
     print("'WARNING: the field LCZ_final could not be created")
 
@@ -122,30 +137,31 @@ except:
 ###########################################
 
 #Verify that the length of all lists containing rasters is the same
+#Nota: the list containing the names of the layers is the only one with the vector layer.
 #FIXME: add all lists
-longueur = ((itotalnb_rasters+1)==len(tslayers_name))
+longueur = ((itotalnb_rasters)==(len(tslayers_name)-1))
 if longueur:
     print("Les longueurs semblent correspondre, vérifier dans la définition des fonctions.")
 else:
     print("'WARNING: lenghts are not all the same!")
 
 # Preparing tables to store the layers and parameters
-trrasters = [None]*(itotalnb_rasters+1)
-tirasters_height = [0]*(itotalnb_rasters+1)
-tirasters_width = [0]*(itotalnb_rasters+1)
-tqrasters_extent = [None]*(itotalnb_rasters+1)
+trrasters = [None]*(itotalnb_rasters)
+tirasters_height = [0]*(itotalnb_rasters)
+tirasters_width = [0]*(itotalnb_rasters)
+tqrasters_extent = [None]*(itotalnb_rasters)
 
 # Get all raster layers
 try:
-    for i in range(1, itotalnb_rasters+1):
-        trrasters[i] = getLayer(tslayers_name[i])
+    for i in range(0, itotalnb_rasters):
+        trrasters[i] = getLayer(tslayers_name[i+1])
     print("Layers imported successfully")
 except:
     print("'WARNING: Layers could not be imported")
 
 # Get size, position and extent of each raster 
 try:
-    for i in range(1, itotalnb_rasters+1):
+    for i in range(0, itotalnb_rasters):
         tirasters_height[i] = trrasters[i].height()#Full height and width of the raster in QGIS unit (i.e. meters here)
         tirasters_width[i] = trrasters[i].width()
         tqrasters_extent[i] = trrasters[i].extent()#Extent in QGIS extent format
@@ -155,8 +171,8 @@ except:
 
 # Get geometry of first raster layer
 try:
-    isize = int(trrasters[1].height()/resolution)
-    qextent0 = trrasters[1].extent()
+    isize = int(trrasters[0].height()/resolution)
+    qextent0 = trrasters[0].extent()
     #Get the position of layer (useful for geotransform later)
     ixmax = qextent0.xMaximum()
     iymax = qextent0.yMaximum()
@@ -194,11 +210,37 @@ else:
 
 features=vlayer.getFeatures()
 
+vlayer.startEditing()
+tiindex_choices = getIndex(vlayer, tsname_choices)
+
 # Go through all cells of vector layer
 for cell in features:
-    x = (cell['left'] + cell['right']) /2
-    y = (cell['top'] + cell['bottom']) /2
-    print(x,y)
+    x = (cell['left'] + cell['right'])/2
+    y = (cell['top'] + cell['bottom'])/2
+    tfraster_values = [0]*itotalnb_rasters
+    tqraster_contents = [0]*itotalnb_rasters
+    for i in range(0, itotalnb_rasters):
+        #Get QGIS object containing validity and value
+        tqraster_contents[i] = getRasterContent(trrasters[i], x, y)
+        #Extract the value of the cell of the raster
+        tfraster_values[i] = tqraster_contents[i].results()[1]
+    LCZ1, LCZ2, LCZ3 = getLCZ()
+    id=cell.id() 
+    attr_value={tiindex_choices[0]:LCZ1, tiindex_choices[1]:LCZ2, tiindex_choices[2]:LCZ3}
+    try:
+        vlayer_provider.changeAttributeValues({id:attr_value})
+        #Pay attention to the fact that sometimes, an error can be rise directly by qgis editor without going through the python console at this stage (namely when a field does not exist)
+    except:
+        print("'WARNING: problem with cell {x},{y}".format(x=x, y=y))
 
+vlayer.commitChanges()
+
+
+###########################################
+#                  Main                   #
+#         Compute homogeneized LCZ        #
+###########################################
+
+# This second part of the computation aims to homogeneize the LCZ over the whole grid
 
 print("End of script, check for WARNINGs...")
