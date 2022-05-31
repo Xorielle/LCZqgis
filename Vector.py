@@ -98,7 +98,10 @@ def getLCZ(tfraster_values):
                     scorek = 2 * (rb - ak) / (rzb - rb) + 1
                 else:
                     scorek = -1
-                score += scorek
+                if k in [1,3]: #Give more weight to AR and ISF in the choice
+                    score += 2*scorek
+                else:
+                    score += scorek
             tfscores[i] = score
             copy.append(score)
         # Get the index of the three maximum scores to store in the attributes table
