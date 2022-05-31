@@ -9,6 +9,7 @@ Execute it after opening it in the editor, or directly copy-paste it in the QGIS
  - If used on Windows: change function createPath
  - Preliminary: a grid vector layer of same dimensions and resolution than the raster layers should be created by hand.
  - Copy the Matrix.py file directly in the folder containing the QGIS project
+ - BSF, PSF and ISF have to be between 0 and 100, not between 0 and 1...
 
 Tips:
 Often, the first letter of a variable indicates its type: i=int, f=float, t=table(list − one t for each dimension, eventually followed by the letter corresponding to the type), v=vector layer, r=raster layer, s=string, q=qgis specific object.
@@ -31,9 +32,10 @@ import Matrix
 
 spath_to_folder = '/home/xorielle/Desktop/Stage/NUDAPT/TestCommandes/MVE' #Where the layers are on the computer
 sfile_format = '.shp'
-tslayers_name = ['Grid20', 'HEIGHT'] #First name should be the one of the vector layer which will contain the LCZ at the end, then rasters: mean height
+# Order of layers ['Vector layer', 'SVF','AR','BSF','ISF','PSF','H','Z0']
+tslayers_name = ['Grid20', 'SVF', 'AR', 'BSF', 'ISF', 'PSF', 'HEIGHT', 'ROUGHNESS'] #First name should be the one of the vector layer which will contain the LCZ at the end, then rasters as written before 
 resolution = 100
-itotalnb_rasters = 1
+itotalnb_rasters = 7
 
 
 ###########################################
@@ -64,9 +66,48 @@ def getRasterContent(raster,x,y):
     """Return the content (qgis object) of the pixel (x,y) in the raster"""
     return(raster.dataProvider().identify(QgsPointXY(x,y), QgsRaster.IdentifyFormatValue))
 
-def getLCZ():
+def getLCZ(tfraster_values):
     """FIXME: function to complete"""
-    return(0, 0, 0)
+    #Separate between urban and rural
+    [svf, ar, bsf, isf, psf, h, zo] = tfraster_values
+    inb_param = len(tfraster_values) 
+    if bsf < 10:
+        return(0, 0, 0)
+    else:
+        tfscores = [0]*10
+        copy = []
+        # Calculate score for each urban LCZ
+        for i in range(0, 10):
+            score = 0
+            # Calculate the score for one parameter thanks to fuzzy logic
+            for k in range(0, inb_param):
+                lb = Matrix.LB[i][k]
+                rb = Matrix.RB[i][k]
+                lzb = Matrix.LZB[i][k]
+                rzb = Matrix.RZB[i][k]
+                ak = tfraster_values[k]
+                if lb < ak < rb:
+                    scorek = 1
+                elif lzb < ak < lb:
+                    scorek = 2 * (ak - lzb) / (lb - lzb) - 1
+                elif rb < ak < rzb:
+                    scorek = 2 * (rb - ak) / (rzb - rb) + 1
+                else:
+                    scorek = -1
+                score += scorek
+            tfscores[i] = score
+            copy.append(score)
+        # Get the index of the three maximum scores to store in the attributes table
+        results = []
+        for i in range(0, 3):
+            m = max(tfscores)
+            indx = tfscores.index(m)
+            tfscores[indx] = -1
+            results.append(indx)
+        return(results)
+
+
+
 
 def getIndex(vlayer, tsnames):
     """Use a list of strings of name of features in entry to return the list of corresponding indexes"""
@@ -117,7 +158,8 @@ try:
     vlayer_provider.addAttributes([QgsField("LCZ_c3",QVariant.Int)])
     vlayer.updateFields()
     print ("Field LCZ_c3 created")
-    tsname_choices = ['LCZ_c1', 'LCZ_c2', 'LCZ_c3']#used later to retrieve the index when editing the vector layer
+    tsname_choices = ['LCZ_c1', 'LCZ_c2', 'LCZ_c3']
+    #used later to retrieve the index when editing the vector layer
 except:
     print("'WARNING: the fields LCZ could not be created")
 
@@ -188,7 +230,10 @@ try:
     for i in range(1, itotalnb_rasters):
         qextent2 = tqrasters_extent[i]
         bextent = verifExtent(qextent0, qextent2, bextent)
-    print("All layers have same shape: {b}".format(b = bextent))
+    if bextent:
+        print("All layers have same shape: {b}".format(b = bextent))
+    else:
+        print("'WARNING: not all layers have same shape!")
 except:
     print("'WARNING: Something went wrong during the verification of layers extent")
 
@@ -224,7 +269,7 @@ for cell in features:
         tqraster_contents[i] = getRasterContent(trrasters[i], x, y)
         #Extract the value of the cell of the raster
         tfraster_values[i] = tqraster_contents[i].results()[1]
-    LCZ1, LCZ2, LCZ3 = getLCZ()
+    [LCZ1, LCZ2, LCZ3] = getLCZ(tfraster_values)
     id=cell.id() 
     attr_value={tiindex_choices[0]:LCZ1, tiindex_choices[1]:LCZ2, tiindex_choices[2]:LCZ3}
     try:

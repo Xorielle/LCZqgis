@@ -92,7 +92,5 @@ LZB[3][6] = 1 #LCZ4, z0
 LZB[10][1] = 0.75 #LCZA, AR
 LZB[10][6] = 1 #LCZA, z0
 
-print(LZB)
-print(RZB)
 
 
