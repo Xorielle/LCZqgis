@@ -67,11 +67,13 @@ def getRasterContent(raster,x,y):
     return(raster.dataProvider().identify(QgsPointXY(x,y), QgsRaster.IdentifyFormatValue))
 
 def getLCZ(tfraster_values):
-    """FIXME: function to complete"""
+    """Get the three LCZ a cell of the grid is the more probable to belong to"""
     #Separate between urban and rural
     [svf, ar, bsf, isf, psf, h, zo] = tfraster_values
-    inb_param = len(tfraster_values) 
-    if bsf < 10:
+    inb_param = len(tfraster_values)
+    if bsf == None:
+        return(None, None, None) 
+    elif bsf < 10:
         return(0, 0, 0)
     else:
         tfscores = [0]*10
@@ -86,7 +88,9 @@ def getLCZ(tfraster_values):
                 lzb = Matrix.LZB[i][k]
                 rzb = Matrix.RZB[i][k]
                 ak = tfraster_values[k]
-                if lb < ak < rb:
+                if ak == None:
+                    scorek = 0
+                elif lb < ak < rb:
                     scorek = 1
                 elif lzb < ak < lb:
                     scorek = 2 * (ak - lzb) / (lb - lzb) - 1
@@ -103,11 +107,8 @@ def getLCZ(tfraster_values):
             m = max(tfscores)
             indx = tfscores.index(m)
             tfscores[indx] = -1
-            results.append(indx)
+            results.append(indx+1)#+1 because LCZ do not start from 0 but from 1
         return(results)
-
-
-
 
 def getIndex(vlayer, tsnames):
     """Use a list of strings of name of features in entry to return the list of corresponding indexes"""
@@ -180,7 +181,6 @@ except:
 
 #Verify that the length of all lists containing rasters is the same
 #Nota: the list containing the names of the layers is the only one with the vector layer.
-#FIXME: add all lists
 longueur = ((itotalnb_rasters)==(len(tslayers_name)-1))
 if longueur:
     print("Les longueurs semblent correspondre, vérifier dans la définition des fonctions.")
