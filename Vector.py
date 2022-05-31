@@ -74,7 +74,7 @@ def getLCZ(tfraster_values):
     if bsf == None:
         return(None, None, None) 
     elif bsf < 10:
-        return(0, 0, 0)
+        return([0, 0, 0])
     else:
         tfscores = [0]*10
         copy = []
@@ -108,6 +108,8 @@ def getLCZ(tfraster_values):
         results = []
         for i in range(0, 3):
             m = max(tfscores)
+            if m <= 4:
+                return([0,0,0])
             indx = tfscores.index(m)
             tfscores[indx] = -1
             results.append(indx+1)#+1 because LCZ do not start from 0 but from 1
