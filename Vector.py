@@ -36,7 +36,7 @@ sfile_format = '.shp'
 tslayers_name = ['Grid20', 'SVF', 'AR', 'BSF', 'ISF', 'PSF', 'HEIGHT', 'ROUGHNESS'] #First name should be the one of the vector layer which will contain the LCZ at the end, then rasters as written before 
 resolution = 100
 itotalnb_rasters = 7
-
+ibuffer = 500
 
 ###########################################
 #         Definition of functions         #
@@ -65,6 +65,22 @@ def getCoordinates(x, y):
 def getRasterContent(raster,x,y):
     """Return the content (qgis object) of the pixel (x,y) in the raster"""
     return(raster.dataProvider().identify(QgsPointXY(x,y), QgsRaster.IdentifyFormatValue))
+
+def getFeatures(vector, xmin, xmax, ymin, ymax):
+    """Get the features in a grid vector thanks to the x and y"""
+    #First create the SQL expression with x and y explicitely
+    spart1 = '"left"<'
+    spart2 = ' AND "right">'
+    spart3 = ' AND "bottom"<'
+    spart4 = ' AND "top">'
+    sexpression = spart1 + str(xmax) + spart2 + str(xmin) + spart3 + str(ymax) + spart4 + str(ymin)
+    #Then select and return the wanted feature (= grid cell)
+    select = vector.selectByExpression(sexpression)#No need to assign the selection to select (?)
+    return(vector.selectedFeatures())
+
+def getFeatureContent(tqfeature, i, sattribute):
+    """Return the value of one particular attribute (with string) of one particular feature (qgis object) in a vector layer"""
+    return(tqfeature[i][sattribute])
 
 def getLCZ(tfraster_values):
     """Get the three LCZ a cell of the grid is the more probable to belong to"""
@@ -122,6 +138,14 @@ def getIndex(vlayer, tsnames):
             print("'WARNING: some fields not found in vector layer")
         ilist[i] = field_index
     return(ilist)
+
+#def assignAttributeValue(vlayer, dattribute, ifeature, value):
+#    """Write in the vector layer the wanted value for a specific attribute of a feature"""
+#    try:
+#        vlayer_provider.changeAttributeValues({ifeature:attr_value})
+#        #Pay attention to the fact that sometimes, an error can be rise directly by qgis editor without going through the python console at this stage (namely when a field does not exist)
+#    except:
+#        print("'WARNING: problem with cell {x},{y}".format(x=x, y=y))
 
 ###########################################
 #                  Main                   #
@@ -222,7 +246,9 @@ try:
     ixmax = qextent0.xMaximum()
     iymax = qextent0.yMaximum()
     ixmin = qextent0.xMinimum()
+    print(ixmin)
     iymin = qextent0.yMinimum()
+    print(iymin)
     print("Geometry parameters of first raster layer imported successfully")
 except:
     print("'WARNING: geomotry parameters of first raster layer not imported")
@@ -290,5 +316,65 @@ vlayer.commitChanges()
 ###########################################
 
 # This second part of the computation aims to homogeneize the LCZ over the whole grid
+# Buffer: size in meters of a side of the big square
+iiterator = int(ibuffer/resolution) #Number of small cells in a big one
+inb_cells = int(iheight/ibuffer) #Number of big cells in a row/column /!\ Still for square rasters /!\
+
+print("Beginning to compute final LCZ...")
+
+vlayer.startEditing()
+iindex_final = getIndex(vlayer, tsname_final)[0]
+listofmax = []#In processing, list to have an idea of the precision of the attribution during the homogeneising process
+
+for m in range(0, inb_cells): #Go through all big cells in a row/column
+    for n in range(0, inb_cells):
+        tfsomme = [0]*12   
+        for i in range(0, iiterator): #Go through all grid cells in a big cell
+            for j in range(0, iiterator):
+                #To take into account for x/y position: minimum x (beginning of the grid) + buffer*iiterator (in which big cell you are) + resolution/2 (to be in the center of the next cell, and not on a knot) + resolution * i (to be in the right grid cell).
+                x = ixmin + ibuffer*m + resolution/2 + resolution*i
+                y = iymin + ibuffer*n + resolution/2 + resolution*j
+                cell = getFeatures(vlayer, x, x, y, y)
+                for k in range(0,3):
+                    try:
+                        c = getFeatureContent(cell, 0, tsname_choices[k])
+                        if c==None:
+                            tfsomme[11] += 2-(k*0.5)
+                        else:
+                            tfsomme[c] += 2-(k*0.5)
+                    except:
+                        #print("'WARNING: no data in cell {},{}".format(x,y))
+                        break
+        # Calculate what final LCZ has to be attributed to the big cell.
+        # FIXME: at what score do we not assign any LCZ?
+        fm = max(tfsomme)
+        listofmax.append(fm)
+        if fm==0: #m=0 if the feature does not exist
+            indx = 11
+        else:
+            indx = tfsomme.index(fm) #indx 0 corresponds to rural areas, then from 1 to 10 the urban LCZ, and index 11 is no data or not assigned.
+        if indx == 11:
+            lcz = None
+        else:
+            lcz = indx
+        # Select all grid cells being in the big cell thanks to its extent
+        xmin = ixmin + ibuffer*m + resolution/2
+        xmax = xmin + ibuffer - resolution
+        ymin = iymin + ibuffer*n + resolution/2
+        ymax = ymin + ibuffer - resolution
+        cells = getFeatures(vlayer, xmin, xmax, ymin, ymax)#List of features contained in the big cell
+        for cell in cells: #Assign the final lcz value to all cells in the big cell
+            id=cell.id() 
+            attr_value={iindex_final:lcz}
+            try:
+                vlayer_provider.changeAttributeValues({id:attr_value})
+                #Pay attention to the fact that sometimes, an error can be rise directly by qgis editor without going through the python console at this stage (namely when a field does not exist)
+            except:
+                print("'WARNING: problem with big cell {m},{n}".format(m=m, n=n))
+
+print("List of homogenising scores: {}".format(listofmax))
+print("Minimum score of attribution: {}".format(min(listofmax)))      
+vlayer.removeSelection()
+vlayer.commitChanges()
 
 print("End of script, check for WARNINGs...")
