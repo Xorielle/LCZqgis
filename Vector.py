@@ -37,6 +37,7 @@ tslayers_name = ['Grid20', 'SVF', 'AR', 'BSF', 'ISF', 'PSF', 'HEIGHT', 'ROUGHNES
 resolution = 100
 itotalnb_rasters = 7
 ibuffer = 500
+iscoremin = 30 #Minimal score of homogeneization
 
 ###########################################
 #         Definition of functions         #
@@ -346,10 +347,11 @@ for m in range(0, inb_cells): #Go through all big cells in a row/column
                         #print("'WARNING: no data in cell {},{}".format(x,y))
                         break
         # Calculate what final LCZ has to be attributed to the big cell.
-        # FIXME: at what score do we not assign any LCZ?
         fm = max(tfsomme)
         listofmax.append(fm)
-        if fm==0: #m=0 if the feature does not exist
+        if fm == 0: #m=0 if the feature does not exist
+            indx = 11
+        elif fm < iscoremin: #impose a minimum value to be sure the areas are a little bit homogeneous
             indx = 11
         else:
             indx = tfsomme.index(fm) #indx 0 corresponds to rural areas, then from 1 to 10 the urban LCZ, and index 11 is no data or not assigned.
