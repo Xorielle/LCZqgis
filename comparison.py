@@ -6,7 +6,7 @@ Execute it after opening it in the editor, or directly copy-paste it in the QGIS
  - Some parameters have to be change, namely the working directory and the names used for the layers in QGIS.
  - Code foreseen for square one-band rasters. Some changes have to be done if it is not the case.
  - If used on Windows: change function createPath
- - The raster coming from WUDAPT should have been croped to the same extent than the raster created with QGIS
+ - The raster coming from WUDAPT should have been croped to the same extent than the raster created with QGIS. It should also have been converted to a grid of 100x100m, using the statistical analysis tool.
  - On the QGIS raster, one category for "rural" areas should be created, and called "20" so that there is no confusion. 
 
 Tips:
@@ -27,7 +27,7 @@ import numpy as np
 ##########################################
 
 spath_to_folder = '/home/xorielle/Desktop/Stage/NUDAPT/TestCommandes/MVE' #Where the layers are on the computer
-tslayers_name = ['WUDAPT', 'LCZ_c1'] #First WUDAPT raster, then QGIS raster (without homogeneization !)
+tslayers_name = ['WUDAPT100x100R', 'LCZ_c1'] #First WUDAPT raster, then QGIS raster (without homogeneization !)
 itotalnb_rasters = 2
 resolution = 100
 
@@ -132,5 +132,43 @@ else:
 #       Comparison of LCZ: occurence      #
 ###########################################
 
-tiicm = [[0]*12]*12 #Confusion matrix
-#Chaque ligne correspond à une seule LCZ attribuée par WUDAPT, chaque colonne est une LCZ de QGIS
+tiicm = [] #Confusion matrix
+for i in range(0,12):
+    tiicm.append([0]*12)
+    #The confusion matrix has to be created this way, else all lines are the same...
+#Chaque ligne correspond à une seule LCZ attribuée par WUDAPT, chaque colonne est une LCZ de QGIS. 
+
+#TODO: Add try/except
+for y in range(0, isize):
+    for x in range(0, isize):
+        ix, iy = getCoordinates(x,y)
+        #Handle data for one cell on every layer
+        tqcontents = []
+        tfvalues = []
+        #Add the QGIS content for each cell of the two rasters
+        tqcontents.append(getRasterContent(trrasters[0], ix, iy))
+        tqcontents.append(getRasterContent(trrasters[1], ix, iy))
+        #Separate the value from the rest of content
+        wudapt = tqcontents[0].results()[1]
+        gis = tqcontents[1].results()[1]
+        #Get the index of the position of this cell in the confusion matrix
+        if wudapt == 20:
+            ij = 0
+        elif wudapt == None:
+            ij = 11
+        else:
+            ij = int(wudapt)
+        if gis == 20:
+            ii = 0
+        elif gis == None:
+            ii = 11
+        else:
+            ii = int(gis)
+        tiicm[ii][ij] += 1
+
+print(tiicm)
+
+        
+
+    
+print("End of script, check for WARNINGs...")
