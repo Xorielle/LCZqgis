@@ -98,9 +98,7 @@ try:
     ixmax = qextent0.xMaximum()
     iymax = qextent0.yMaximum()
     ixmin = qextent0.xMinimum()
-    print(ixmin)
     iymin = qextent0.yMinimum()
-    print(iymin)
     print("Geometry parameters of first raster layer imported successfully")
 except:
     print("'WARNING: geomotry parameters of first raster layer not imported")
@@ -164,15 +162,36 @@ try:
                 ii = 11
             else:
                 ii = int(gis)
-            tiicm[ii][ij] += 1
+            tiicm[ij][ii] += 1
     print("Confusion matrix correcly calculated")
 except:
     print("'WARNING: the confusion matrix could not be computed")
 
 # Printing of the results
+print("Printing of Confusion Matrix. One line represents how QGIS classified all cells that WUDAPT detected as the same LCZ.")
 titles = ["Ru", " 1", " 2", " 3", " 4", " 5", " 6", " 7", " 8", " 9", "10", "ND"]
 print(titles)
 for i in range(0, 12):
     print(titles[i], tiicm[i])
+
+
+###########################################
+#                  Main                   #
+#       Some statistics with the CM       #
+###########################################
+
+inbtot_cells = 0
+titot_wudapt = [0]*12
+titot_gis = [0]*12
+
+for i in range (0, 12):
+    for j in range(0, 12):
+        nb = tiicm[i][j]
+        inbtot_cells += nb
+        titot_gis[j] += nb
+        titot_wudapt[i] += nb
+
+        
     
+
 print("End of script, check for WARNINGs...")
