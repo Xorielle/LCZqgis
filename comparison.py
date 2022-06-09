@@ -138,37 +138,41 @@ for i in range(0,12):
     #The confusion matrix has to be created this way, else all lines are the same...
 #Chaque ligne correspond à une seule LCZ attribuée par WUDAPT, chaque colonne est une LCZ de QGIS. 
 
-#TODO: Add try/except
-for y in range(0, isize):
-    for x in range(0, isize):
-        ix, iy = getCoordinates(x,y)
-        #Handle data for one cell on every layer
-        tqcontents = []
-        tfvalues = []
-        #Add the QGIS content for each cell of the two rasters
-        tqcontents.append(getRasterContent(trrasters[0], ix, iy))
-        tqcontents.append(getRasterContent(trrasters[1], ix, iy))
-        #Separate the value from the rest of content
-        wudapt = tqcontents[0].results()[1]
-        gis = tqcontents[1].results()[1]
-        #Get the index of the position of this cell in the confusion matrix
-        if wudapt == 20:
-            ij = 0
-        elif wudapt == None:
-            ij = 11
-        else:
-            ij = int(wudapt)
-        if gis == 20:
-            ii = 0
-        elif gis == None:
-            ii = 11
-        else:
-            ii = int(gis)
-        tiicm[ii][ij] += 1
+try:
+    for y in range(0, isize):
+        for x in range(0, isize):
+            ix, iy = getCoordinates(x,y)
+            #Handle data for one cell on every layer
+            tqcontents = []
+            tfvalues = []
+            #Add the QGIS content for each cell of the two rasters
+            tqcontents.append(getRasterContent(trrasters[0], ix, iy))
+            tqcontents.append(getRasterContent(trrasters[1], ix, iy))
+            #Separate the value from the rest of content
+            wudapt = tqcontents[0].results()[1]
+            gis = tqcontents[1].results()[1]
+            #Get the index of the position of this cell in the confusion matrix
+            if wudapt == 20:
+                ij = 0
+            elif wudapt == None:
+                ij = 11
+            else:
+                ij = int(wudapt)
+            if gis == 20:
+                ii = 0
+            elif gis == None:
+                ii = 11
+            else:
+                ii = int(gis)
+            tiicm[ii][ij] += 1
+    print("Confusion matrix correcly calculated")
+except:
+    print("'WARNING: the confusion matrix could not be computed")
 
-print(tiicm)
-
-        
-
+# Printing of the results
+titles = ["Ru", " 1", " 2", " 3", " 4", " 5", " 6", " 7", " 8", " 9", "10", "ND"]
+print(titles)
+for i in range(0, 12):
+    print(titles[i], tiicm[i])
     
 print("End of script, check for WARNINGs...")
