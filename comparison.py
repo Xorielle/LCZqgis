@@ -181,8 +181,9 @@ for i in range(0, 12):
 ###########################################
 
 inbtot_cells = 0
-titot_wudapt = [0]*12
-titot_gis = [0]*12
+titot_wudapt = np.zeros(12)
+titot_gis = np.zeros(12)
+tftrue_pos = np.zeros(12)
 
 for i in range (0, 12):
     for j in range(0, 12):
@@ -190,8 +191,77 @@ for i in range (0, 12):
         inbtot_cells += nb
         titot_gis[j] += nb
         titot_wudapt[i] += nb
+        if i == j:
+            tftrue_pos[i] = nb          
 
-        
-    
+tottrue = sum(tftrue_pos)
+
+tfdenom_prec = titot_gis #True positive + False positive (classified as the LCZ but WUDAPT says something else)
+tfdenom_sens = titot_wudapt #True Positive + False Negative (classified as something else but WUDAPT says it is this particular LCZ)
+tffalse_pos = tfdenom_prec - tftrue_pos
+tffalse_neg = tfdenom_sens - tftrue_pos
+tfdenom_accu = tottrue + tffalse_neg + tffalse_pos
+tftrue_neg = tottrue - tftrue_pos
+
+tfaccuracy = (tftrue_pos + tftrue_neg) / (tftrue_pos + tftrue_neg + tffalse_neg + tffalse_pos)
+tfprecision = tftrue_pos / (tftrue_pos + tffalse_pos)
+tfsensitivity = tftrue_pos / (tftrue_pos + tffalse_neg)
+tff1score = 2 * (tfprecision * tfsensitivity) / (tfprecision + tfsensitivity)
+
+print("\nStatistics on all LCZ")
+print(titles)
+print("Accuracy:", np.round_(tfaccuracy, 2))
+print("Precision:", np.round_(tfprecision, 2))
+print("Sensitivity:", np.round_(tfsensitivity, 2))
+print("F1-score:", np.round_(tff1score, 2))
+
+#Same statistics but regrouping 20 and None into "rural", and all urban LCZ into one category
+tiicm2 = [[0,0],[0,0]]
+titles = ["Ru", "Urb"]
+
+for i in range(0, 12):
+    for j in range(0, 12):
+        if (i == 0 or i == 11) and (j == 0 or j == 11):
+            tiicm2[0][0] += tiicm[i][j]
+        elif (i == 0 or i == 11) and 0 < j < 11:
+            tiicm2[0][1] += tiicm[i][j]
+        elif 0 < i < 11 and (j == 0 or j == 11):
+            tiicm2[1][0] += tiicm[i][j]
+        else:
+            tiicm2[1][1] += tiicm[i][j]
+
+titot_wudapt = np.zeros(2)
+titot_gis = np.zeros(2)
+tftrue_pos = np.zeros(2)
+
+for i in range (0, 2):
+    for j in range(0, 2):
+        nb = tiicm2[i][j]
+        titot_gis[j] += nb
+        titot_wudapt[i] += nb
+        if i == j:
+            tftrue_pos[i] = nb          
+
+tottrue = sum(tftrue_pos)
+
+tfdenom_prec = titot_gis #True positive + False positive (classified as the LCZ but WUDAPT says something else)
+tfdenom_sens = titot_wudapt #True Positive + False Negative (classified as something else but WUDAPT says it is this particular LCZ)
+tffalse_pos = tfdenom_prec - tftrue_pos
+tffalse_neg = tfdenom_sens - tftrue_pos
+tfdenom_accu = tottrue + tffalse_neg + tffalse_pos
+tftrue_neg = tottrue - tftrue_pos
+
+tfaccuracy = (tftrue_pos + tftrue_neg) / (tftrue_pos + tftrue_neg + tffalse_neg + tffalse_pos)
+tfprecision = tftrue_pos / (tftrue_pos + tffalse_pos)
+tfsensitivity = tftrue_pos / (tftrue_pos + tffalse_neg)
+tff1score = 2 * (tfprecision * tfsensitivity) / (tfprecision + tfsensitivity)
+
+print("\nStatistics on urban / rural LCZ")
+print(titles)
+print("Accuracy:", np.round_(tfaccuracy, 2))
+print("Precision:", np.round_(tfprecision, 2))
+print("Sensitivity:", np.round_(tfsensitivity, 2))
+print("F1-score:", np.round_(tff1score, 2))
+
 
 print("End of script, check for WARNINGs...")
