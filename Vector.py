@@ -33,11 +33,11 @@ import Matrix
 spath_to_folder = '/home/xorielle/Desktop/Stage/NUDAPT/TestCommandes/MVE' #Where the layers are on the computer
 sfile_format = '.shp'
 # Order of layers ['Vector layer', 'SVF','AR','BSF','ISF','PSF','H','Z0']
-tslayers_name = ['Grid20', 'SVF', 'AR', 'BSF', 'ISF', 'PSF', 'HEIGHT', 'ROUGHNESS'] #First name should be the one of the vector layer which will contain the LCZ at the end, then rasters as written before 
+tslayers_name = ['Grid20', 'SVF', 'AR', 'BSF', 'ISF', 'PSF', 'HEIGHT', 'ROUGHNESS'] #First name should be the one of the vector layer which will contain the LCZ at the end, then rasters as written before. WARNING: to be change in function getLCZ if the order/number of rasters are also changed.
 resolution = 100
 itotalnb_rasters = 7
 ibuffer = 500
-iscoremin = 30 #Minimal score of homogeneization
+iscoremin = int(1.2*(ibuffer/resolution)**2) #Minimal score of homogeneization
 
 ###########################################
 #         Definition of functions         #
@@ -86,6 +86,7 @@ def getFeatureContent(tqfeature, i, sattribute):
 def getLCZ(tfraster_values):
     """Get the three LCZ a cell of the grid is the more probable to belong to"""
     #Separate between urban and rural
+    # WARNING: change this list if the number of rasters used is different!
     [svf, ar, bsf, isf, psf, h, zo] = tfraster_values
     inb_param = len(tfraster_values)
     if bsf == None:
@@ -347,6 +348,7 @@ for m in range(0, inb_cells): #Go through all big cells in a row/column
                         #print("'WARNING: no data in cell {},{}".format(x,y))
                         break
         # Calculate what final LCZ has to be attributed to the big cell.
+        #Max score should be 2*(buffer/resolution)^2 if LCZ are attributed. But if LCZ is None, more than one column will have this value. At the end, max score is (2+1.5+1)*(buffer/resolution)^2, even if it is a "false" max. 
         fm = max(tfsomme)
         listofmax.append(fm)
         if fm == 0: #m=0 if the feature does not exist
