@@ -92,7 +92,7 @@ def getLCZ(tfraster_values):
     if bsf == None:
         return(None, None, None) 
     elif bsf < 10:
-        return(0, 0, 0)
+        return(20, 20, 20)
     else:
         tfscores = [0]*10
         copy = []
@@ -286,6 +286,8 @@ else:
 
 features=vlayer.getFeatures()
 
+print("Beginning of LCZ computation...")
+
 vlayer.startEditing()
 tiindex_choices = getIndex(vlayer, tsname_choices)
 
@@ -342,6 +344,8 @@ for m in range(0, inb_cells): #Go through all big cells in a row/column
                         c = getFeatureContent(cell, 0, tsname_choices[k])
                         if c==None:
                             tfsomme[11] += 2-(k*0.5)
+                        elif c == 20:
+                            tfsomme[0] += 2-(k*0.5)
                         else:
                             tfsomme[c] += 2-(k*0.5)
                     except:
