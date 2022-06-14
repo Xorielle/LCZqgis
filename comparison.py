@@ -132,8 +132,8 @@ else:
 ###########################################
 
 tiicm = [] #Confusion matrix
-for i in range(0,12):
-    tiicm.append([0]*12)
+for i in range(0,11):
+    tiicm.append([0]*11)
     #The confusion matrix has to be created this way, else all lines are the same...
 #Chaque ligne correspond à une seule LCZ attribuée par WUDAPT, chaque colonne est une LCZ de QGIS. 
 
@@ -154,13 +154,13 @@ try:
             if wudapt == 20:
                 ij = 0
             elif wudapt == None:
-                ij = 11
+                ij = 0
             else:
                 ij = int(wudapt)
             if gis == 20:
                 ii = 0
             elif gis == None:
-                ii = 11
+                ii = 0
             else:
                 ii = int(gis)
             tiicm[ij][ii] += 1
@@ -170,9 +170,9 @@ except:
 
 # Printing of the results
 print("Printing of Confusion Matrix. One line represents how QGIS classified all cells that WUDAPT detected as the same LCZ.")
-titles = ["Ru", " 1", " 2", " 3", " 4", " 5", " 6", " 7", " 8", " 9", "10", "ND"]
+titles = ["Ru", " 1", " 2", " 3", " 4", " 5", " 6", " 7", " 8", " 9", "10"]
 print(titles)
-for i in range(0, 12):
+for i in range(0, 11):
     print(titles[i], tiicm[i])
 
 
@@ -182,12 +182,12 @@ for i in range(0, 12):
 ###########################################
 
 inbtot_cells = 0
-titot_wudapt = np.zeros(12)
-titot_gis = np.zeros(12)
-tftrue_pos = np.zeros(12)
+titot_wudapt = np.zeros(11)
+titot_gis = np.zeros(11)
+tftrue_pos = np.zeros(11)
 
-for i in range (0, 12):
-    for j in range(0, 12):
+for i in range (0, 11):
+    for j in range(0, 11):
         nb = tiicm[i][j]
         inbtot_cells += nb
         titot_gis[j] += nb
@@ -220,13 +220,13 @@ print("F1-score:", np.round_(tff1score, 2))
 tiicm2 = [[0,0],[0,0]]
 titles = ["Ru", "Urb"]
 
-for i in range(0, 12):
-    for j in range(0, 12):
-        if (i == 0 or i == 11) and (j == 0 or j == 11):
+for i in range(0, 11):
+    for j in range(0, 11):
+        if (i == 0) and (j == 0):
             tiicm2[0][0] += tiicm[i][j]
-        elif (i == 0 or i == 11) and 0 < j < 11:
+        elif (i == 0) and 0 < j < 11:
             tiicm2[0][1] += tiicm[i][j]
-        elif 0 < i < 11 and (j == 0 or j == 11):
+        elif 0 < i < 11 and (j == 0):
             tiicm2[1][0] += tiicm[i][j]
         else:
             tiicm2[1][1] += tiicm[i][j]
