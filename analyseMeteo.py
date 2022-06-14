@@ -13,7 +13,7 @@ The file Data.txt contains lines of strings: the first line is the header, "POST
 - N total nebulosity (int, octa)
 
 One line of data has following format:
-69029001;2012010209;1,2;11,0;7,0;200;85;0;8
+69029001;2012010209;1,2;11,0;7,0;200;85;0;8\n
 
 Myrtille Grulois − June 2022
 """
@@ -23,20 +23,16 @@ Myrtille Grulois − June 2022
 #                 IMPORTS                #
 ##########################################
 
-
+import scipy
+import numpy as np
 
 
 ##########################################
 #         PARAMETERS TO COMPLETE         #
 ##########################################
 
-ete = ['06','07','08']
-automne = ['09','10','11']
-hiver = ['12','01','02']
-printemps = ['03','04','05']
-
-classification = True #To be set to False except if it is the first time of running code and the files for each season haven’t been created
-season = 'ete' #Choose which season is going to be analysed
+classification = False #To be set to False except if it is the first time of running code and the files for each season haven’t been created
+season = 'test' #Choose which season is going to be analysed
 
 
 ##########################################
@@ -58,6 +54,11 @@ def sorting(sfile):
 ##########################################
 #               CLASSIFICATION           #
 ##########################################
+
+ete = ['06','07','08']
+automne = ['09','10','11']
+hiver = ['12','01','02']
+printemps = ['03','04','05']
 
 if classification:
     with open('Data1.txt', 'r', encoding='utf-8') as file:
@@ -96,17 +97,38 @@ if classification:
     sorting('printemps.txt')
 
 
+##########################################
+#                 ANALYSIS               #
+##########################################
+
+# Analyse de la saison voulue pour trouver un jour type selon différentes méthodes statistiques
+sfile = season + '.txt'
+
+with open(sfile, 'r', encoding='utf-8') as file:
+    data = []
+    for line in file:
+        txt = file.readline()
+        #txt = file.readline()[:-2].split(';')
+        #if txt[-1] == '':
+        #    txt[-1] = '0'
+        #for i in range(0,8):
+        #    nb = txt[i].replace(',','.')
+        #    txt[i] = nb
+        #rplc = txt.replace(',','.')
+        data.append(txt)
+    print(data)
+#    adata = np.array(data, dtype = np.float32)
+#    print(adata)
+
 
 #    print(lines[1].split(';'))
 
 
+  
 
-
-
-#Analyse de la saison voulue pour trouver un jour type 
-
-    
-    
+##########################################
+#                 GRAPHS                 #
+##########################################
     
     
 #lines = ['Readme', 'How to write text files in Python']
