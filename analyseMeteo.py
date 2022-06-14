@@ -43,8 +43,16 @@ season = 'ete' #Choose which season is going to be analysed
 #                 FONCTIONS              #
 ##########################################
 
-
-
+def sorting(sfile):
+    '''Sort a file by hour'''
+    file = open(sfile, 'r', encoding='utf-8')
+    lines = file.readlines()
+    file.close()
+    lines.sort()
+    file = open(sfile, 'w', encoding='utf-8')
+    for line in lines:
+        file.write(line)
+    file.close()
 
 
 ##########################################
@@ -66,23 +74,32 @@ if classification:
     for line in lines:
         mois = line[13:15]
         if mois in ete:
-            fete.write(line)
+            fete.write(line[17:])
         elif mois in automne:
-            fautomne.write(line)
+            fautomne.write(line[17:])
         elif mois in hiver:
-            fhiver.write(line)
+            fhiver.write(line[17:])
         elif mois in printemps:
-            fprintemps.write(line)
+            fprintemps.write(line[17:])
         else:
             fnonclass.write(line)
-
-#    print(lines[1].split(';'))
 
     fete.close()
     fautomne.close()
     fhiver.close()
     fprintemps.close()
     fnonclass.close()
+
+    sorting('ete.txt')
+    sorting('automne.txt')
+    sorting('hiver.txt')
+    sorting('printemps.txt')
+
+
+
+#    print(lines[1].split(';'))
+
+
 
 
 
