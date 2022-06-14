@@ -7,7 +7,8 @@ Execute it after opening it in the editor, or directly copy-paste it in the QGIS
  - Code foreseen for square one-band rasters. Some changes have to be done if it is not the case.
  - If used on Windows: change function createPath
  - The raster coming from WUDAPT should have been croped to the same extent than the raster created with QGIS. It should also have been converted to a grid of 100x100m, using the statistical analysis tool.
- - On the QGIS raster, one category for "rural" areas should be created, and called "20" so that there is no confusion. 
+ - On the QGIS raster, one category for "rural" areas should be created, and called "20" so that there is no confusion.
+ - The WUDAPT layer should also have been treated: all rural classes regrouped under one called "20" (with raster calculator, syntaxe: if(raster>10, 20, raster) )
 
 Tips:
 Often, the first letter of a variable indicates its type: i=int, f=float, t=table(list − one t for each dimension, eventually followed by the letter corresponding to the type), v=vector layer, r=raster layer, s=string, q=qgis specific object.
@@ -54,7 +55,7 @@ def verifExtent(qextent0, qextent2, bextent):
 
 def getCoordinates(x, y):
     """Return the coordinates corresponding to the cell located in the x line and y column"""
-    return(ixmin+x*resolution, iymin+y*resolution)
+    return(ixmin+(x+0.5)*resolution, iymin+(y+0.5)*resolution)
 
 def getRasterContent(raster,x,y):
     """Return the content (qgis object) of the pixel (x,y) in the raster"""
