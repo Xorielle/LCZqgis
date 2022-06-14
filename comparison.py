@@ -209,12 +209,19 @@ tfprecision = tftrue_pos / (tftrue_pos + tffalse_pos)
 tfsensitivity = tftrue_pos / (tftrue_pos + tffalse_neg)
 tff1score = 2 * (tfprecision * tfsensitivity) / (tfprecision + tfsensitivity)
 
+# Calculation of Overall Accuracy, meaning percentage of cells that have been well found
+OA = 0
+for i in range(0,11):
+    OA += tiicm[i][i]
+OA = OA / isize / isize * 100
+
 print("\nStatistics on all LCZ")
 print(titles)
 print("Accuracy:", np.round_(tfaccuracy, 2))
 print("Precision:", np.round_(tfprecision, 2))
 print("Sensitivity:", np.round_(tfsensitivity, 2))
 print("F1-score:", np.round_(tff1score, 2))
+print("Overall Accuracy OA:", OA, "%")
 
 #Same statistics but regrouping 20 and None into "rural", and all urban LCZ into one category
 tiicm2 = [[0,0],[0,0]]
