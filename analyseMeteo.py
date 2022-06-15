@@ -33,7 +33,7 @@ import csv
 #         PARAMETERS TO COMPLETE         #
 ##########################################
 
-classification = True #To be set to False except if it is the first time of running code and the files for each season haven’t been created
+classification = False #To be set to False except if it is the first time of running code and the files for each season haven’t been created
 season = 'ete' #Choose which season is going to be analysed
 
 
@@ -120,17 +120,29 @@ with open(sfile, 'r', newline='', encoding='utf-8') as file:
     adata = np.array(data, dtype = np.float32)
     print(adata)
 
+#moyenne = np.mean(adata, 0) #0 means mean over the column, 1 over the rows
+moyenne = np.nanmean(adata, 0) #Ignoring NaNs
+mediane = np.nanmedian(adata, 0)
+stddev = np.nanstd(adata, 0)
+variance = np.nanvar(adata, 0)
+countnonN = np.count_nonzero(~np.isnan(adata), 0) # ~ inverts the matrix, isnan is a boolean with 1 if value is NaN, this enable to count the number of non NAN values in every column.
+stderr = stddev / np.sqrt(countnonN)
+qrt25 = np.nanquantile(adata, 0.25, 0)
+qrt50 = np.nanquantile(adata, 0.5, 0)
+qrt75 = np.nanquantile(adata, 0.75, 0)
 
-#    print(lines[1].split(';'))
+np.set_printoptions(precision=3, suppress=True) #The arrays printed in the prompt are easier to read but are not modified. 
 
+print("Mean:", moyenne)
+print("Median:", mediane)
+print("Standard deviation:", stddev)
+print("Standard error:", stderr)
+print("Variance:", variance)
+print("1st quartile:", qrt25)
+print("3rt quartile:", qrt75)
 
-  
 
 ##########################################
 #                 GRAPHS                 #
 ##########################################
-    
-    
-#lines = ['Readme', 'How to write text files in Python']
-#with open('readme.txt', 'w') as f:
-#    f.write('\n'.join(lines))
+
