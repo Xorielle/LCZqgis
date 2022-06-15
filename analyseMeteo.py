@@ -36,6 +36,8 @@ import csv
 classification = False #To be set to False except if it is the first time of running code and the files for each season haven’t been created
 season = 'ete' #Choose which season is going to be analysed
 
+np.set_printoptions(precision=3, suppress=True) #The arrays printed in the prompt are easier to read but are not modified. 
+
 
 ##########################################
 #                 FONCTIONS              #
@@ -53,6 +55,36 @@ def sorting(sfile):
     file.close()
 
 
+def statistics(nparray, hour):
+    tableau = []
+    incr = 0
+    line = nparray[0]
+    limit = len(nparray)-1
+    while line[0] < hour:
+        incr += 1
+        line = nparray[incr]
+    while line[0] == hour and incr < limit:
+        tableau.append(line)
+        incr += 1
+        line = nparray[incr]
+    stats = [] #Each row is for all types of values, each column is for all stats for this value
+    moyenne = np.nanmean(tableau, 0) #Ignoring NaNs
+    mediane = np.nanmedian(tableau, 0)
+    stddev = np.nanstd(tableau, 0)
+    countnonN = np.count_nonzero(~np.isnan(tableau), 0) # ~ inverts the matrix, isnan is a boolean with 1 if value is NaN, this enable to count the number of non NAN values in every column.
+    stderr = stddev / np.sqrt(countnonN)
+    qrt25 = np.nanquantile(tableau, 0.25, 0)
+    qrt75 = np.nanquantile(tableau, 0.75, 0)
+    tmax = np.nanmax(tableau, 0)
+    tmin = np.nanmin(tableau, 0)
+    stats.append([moyenne, stderr, mediane, countnonN, tmin, qrt25, qrt75, tmax])
+    print(stats)
+    return(stats)
+
+
+
+
+
 ##########################################
 #               CLASSIFICATION           #
 ##########################################
@@ -63,14 +95,14 @@ hiver = ['12','01','02']
 printemps = ['03','04','05']
 
 if classification:
-    with open('Data1.txt', 'r', encoding='utf-8') as file:
+    with open('Data2_generated.csv', 'r', encoding='utf-8') as file:
         lines = file.readlines()
 
-    fete = open('ete.txt', 'w', encoding='utf-8')
-    fautomne = open('automne.txt', 'w', encoding='utf-8')
-    fhiver = open('hiver.txt', 'w', encoding='utf-8')
-    fprintemps = open('printemps.txt', 'w', encoding='utf-8')
-    fnonclass = open('nonclass.txt','w', encoding='utf-8')
+    fete = open('ete.csv', 'w', encoding='utf-8')
+    fautomne = open('automne.csv', 'w', encoding='utf-8')
+    fhiver = open('hiver.csv', 'w', encoding='utf-8')
+    fprintemps = open('printemps.csv', 'w', encoding='utf-8')
+    fnonclass = open('nonclass.csv','w', encoding='utf-8')
 
     sheader = lines.pop(0)
     inc = 0
@@ -95,10 +127,10 @@ if classification:
     fprintemps.close()
     fnonclass.close()
 
-    sorting('ete.txt')
-    sorting('automne.txt')
-    sorting('hiver.txt')
-    sorting('printemps.txt')
+    sorting('ete.csv')
+    sorting('automne.csv')
+    sorting('hiver.csv')
+    sorting('printemps.csv')
 
     print("Sorting done. {} line(s) non classified.".format(inc))
 
@@ -120,6 +152,8 @@ with open(sfile, 'r', newline='', encoding='utf-8') as file:
     adata = np.array(data, dtype = np.float32)
     print(adata)
 
+stats = statistics(adata, 1)
+
 #moyenne = np.mean(adata, 0) #0 means mean over the column, 1 over the rows
 moyenne = np.nanmean(adata, 0) #Ignoring NaNs
 mediane = np.nanmedian(adata, 0)
@@ -131,7 +165,6 @@ qrt25 = np.nanquantile(adata, 0.25, 0)
 qrt50 = np.nanquantile(adata, 0.5, 0)
 qrt75 = np.nanquantile(adata, 0.75, 0)
 
-np.set_printoptions(precision=3, suppress=True) #The arrays printed in the prompt are easier to read but are not modified. 
 
 print("Mean:", moyenne)
 print("Median:", mediane)
