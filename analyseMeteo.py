@@ -28,6 +28,7 @@ Myrtille Grulois − June 2022
 import scipy
 import numpy as np
 import csv
+import matplotlib.pyplot as plt
 
 ##########################################
 #         PARAMETERS TO COMPLETE         #
@@ -35,6 +36,11 @@ import csv
 
 classification = False #To be set to False except if it is the first time of running code and the files for each season haven’t been created
 season = 'ete' #Choose which season is going to be analysed
+
+toprint = [1,2,3,5,6,7] #List of indexes for parameters to print. [Hour;Rainfall;Tmp;Speed of w;Direction of w;Humidity;Global radiation;Cloud cover] for the files from Lyon Bron and Lyon St-Ex
+theader = ["Rainfall", "Temperature", "Wind speed", "Humidity", "Radiation", "Cloud cover"]
+tunits = ["$kg.m^{-2}$", "K", "$m.s^{-1}$", "$\%$", "$W.m^{-2}$", "octa"]
+#TODO: Direction of wind: how to print that?
 
 np.set_printoptions(precision=3, suppress=True) #The arrays printed in the prompt are easier to read but are not modified. 
 
@@ -78,8 +84,56 @@ def statistics(nparray, hour):
     tmax = np.nanmax(tableau, 0)
     tmin = np.nanmin(tableau, 0)
     stats.append([moyenne, stderr, mediane, countnonN, tmin, qrt25, qrt75, tmax])
-    print(stats)
     return(stats)
+
+
+def grmean(table, toprint):
+    nbgr = len(toprint)
+    fig, axes = plt.subplots(nrows=int((nbgr+1)/2), ncols=2)
+    for i in range(0,nbgr):
+        var = toprint[i]
+        row = int(i/2)
+        col = int(2*(i/2-row))
+        ymean = []
+        ystder = []
+        for h in range(0,24):
+            ymean.append(table[h][0][0][var])
+            ystder.append(table[h][0][1][var])
+        axes[row][col].set_title("{}".format(theader[i]))
+        axes[row][col].errorbar(hours, ymean, yerr=ystder, fmt='o', capsize=4)
+        axes[row][col].set_xlabel("Time (h)")
+        axes[row][col].set_ylabel(tunits[i])
+    fig.tight_layout(h_pad=2)
+    fig.tight_layout()
+    fig.suptitle('Mean and standard error in {} for:'.format(season))
+    plt.subplots_adjust(top=0.85)
+    plt.show()
+
+
+def grmed(table, toprint):
+    nbgr = len(toprint)
+    fig, axes = plt.subplots(nrows=int((nbgr+1)/2), ncols=2)
+    labels = ['med', 'whislo', 'q1', 'q3', 'whishi']
+    indices = [2, 4, 5, 6, 7]
+    for i in range(0,nbgr):
+        limhours = []
+        var = toprint[i]
+        row = int(i/2)
+        col = int(2*(i/2-row))
+        for h in range(0,24):
+            dic = {}
+            for k in range(0, 5):
+                dic[labels[k]] = table[h][0][indices[k]][var]
+            limhours.append(dic)
+        axes[row][col].set_title("{}".format(theader[i]))
+        axes[row][col].bxp(limhours, showfliers=False)
+        axes[row][col].set_xlabel("Time (h)")
+        axes[row][col].set_ylabel(tunits[i])
+    fig.tight_layout(h_pad=2)
+    fig.tight_layout()
+    fig.suptitle('Mediane, 1st and 3rd quartiles, min and max {} for:'.format(season))
+    plt.subplots_adjust(top=0.85)
+    plt.show()
 
 
 
@@ -150,9 +204,9 @@ with open(sfile, 'r', newline='', encoding='utf-8') as file:
         data.append(row)
 
     adata = np.array(data, dtype = np.float32)
-    print(adata)
+#    print(adata)
 
-stats = statistics(adata, 1)
+
 
 #moyenne = np.mean(adata, 0) #0 means mean over the column, 1 over the rows
 moyenne = np.nanmean(adata, 0) #Ignoring NaNs
@@ -165,17 +219,29 @@ qrt25 = np.nanquantile(adata, 0.25, 0)
 qrt50 = np.nanquantile(adata, 0.5, 0)
 qrt75 = np.nanquantile(adata, 0.75, 0)
 
+#print("Mean:", moyenne)
+#print("Median:", mediane)
+#print("Standard deviation:", stddev)
+#print("Standard error:", stderr)
+#print("Variance:", variance)
+#print("1st quartile:", qrt25)
+#print("3rt quartile:", qrt75)
 
-print("Mean:", moyenne)
-print("Median:", mediane)
-print("Standard deviation:", stddev)
-print("Standard error:", stderr)
-print("Variance:", variance)
-print("1st quartile:", qrt25)
-print("3rt quartile:", qrt75)
+tttstats = []
+
+#Shape of tttstats:
+#[For each hour [[moyenne[Hour;Rainfall;Tmp;Speed of w;Direction of w;Humidity;Global radiation;Cloud cover], stderr, mediane, countnonN, tmin, qrt25, qrt75, tmax]]]
+
+for h in range(0,24):
+    tttstats.append(statistics(adata, h))
 
 
 ##########################################
 #                 GRAPHS                 #
 ##########################################
 
+hours = [i for i in range(0,24)]
+
+grmean(tttstats, toprint)
+grmed(tttstats, toprint)
+grwind(tttstats)
