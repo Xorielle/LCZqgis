@@ -40,7 +40,7 @@ season = 'ete' #Choose which season is going to be analysed
 
 toprint = [1,2,3,5,6,7] #List of indexes for parameters to print. [Hour;Rainfall;Tmp;Speed of w;Direction of w;Humidity;Global radiation;Cloud cover] for the files from Lyon Bron and Lyon St-Ex
 theader = ["Rainfall", "Temperature", "Wind speed", "Humidity", "Radiation", "Cloud cover"]
-tunits = ["$kg.m^{-2}$", "K", "$m.s^{-1}$", "$\%$", "$W.m^{-2}$", "octa"]
+tunits = ["$kg.m^{-2}$", "K", "$m.s^{-1}$", "$\%$", "$J.m^{-2}$", "octa"]
 
 np.set_printoptions(precision=3, suppress=True) #The arrays printed in the prompt are easier to read but are not modified. 
 
@@ -313,7 +313,7 @@ for h in range(0,24):
 
 hours = [i for i in range(0,24)]
 
-#grmean(tttstats, toprint)
-#grmed(tttstats, toprint)
-grwindtotal(tttstats)
-grwind24(adata)
+grmean(tttstats, toprint)
+grmed(tttstats, toprint)
+#grwindtotal(tttstats)
+#grwind24(adata)
