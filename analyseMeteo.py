@@ -25,6 +25,7 @@ Myrtille Grulois − June 2022
 #                 IMPORTS                #
 ##########################################
 
+from cmath import nan
 import scipy
 import numpy as np
 import csv
@@ -40,7 +41,6 @@ season = 'ete' #Choose which season is going to be analysed
 toprint = [1,2,3,5,6,7] #List of indexes for parameters to print. [Hour;Rainfall;Tmp;Speed of w;Direction of w;Humidity;Global radiation;Cloud cover] for the files from Lyon Bron and Lyon St-Ex
 theader = ["Rainfall", "Temperature", "Wind speed", "Humidity", "Radiation", "Cloud cover"]
 tunits = ["$kg.m^{-2}$", "K", "$m.s^{-1}$", "$\%$", "$W.m^{-2}$", "octa"]
-#TODO: Direction of wind: how to print that?
 
 np.set_printoptions(precision=3, suppress=True) #The arrays printed in the prompt are easier to read but are not modified. 
 
@@ -127,17 +127,89 @@ def grmed(table, toprint):
             limhours.append(dic)
         axes[row][col].set_title("{}".format(theader[i]))
         axes[row][col].bxp(limhours, showfliers=False)
+        axes[row][col].set_xticklabels(hours)
         axes[row][col].set_xlabel("Time (h)")
         axes[row][col].set_ylabel(tunits[i])
     fig.tight_layout(h_pad=2)
     fig.tight_layout()
-    fig.suptitle('Mediane, 1st and 3rd quartiles, min and max {} for:'.format(season))
+    fig.suptitle('Mediane, 1st and 3rd quartiles, min and max in {} for:'.format(season))
     plt.subplots_adjust(top=0.85)
     plt.show()
 
 
+def grwindtotal(table):
+    ax = plt.subplot(111, projection='polar')
+    dir = np.zeros(24)
+    speed = np.zeros(24)
+    for h in range(0,24):
+        dir[h] = table[h][0][2][4] #median of wind direction
+        speed[h] = table[h][0][0][3] #mean of wind speed
+    colors = hours
+    angle = dir * 2 * np.pi / 360    
+    scatter = ax.scatter(angle, speed, c=colors, cmap='hsv')
+    ax.set_theta_offset(np.pi/2)
+    ax.set_theta_direction(-1)
+    label_position=ax.get_rlabel_position() #Find the place for the label
+    ax.text(np.radians(label_position+10),ax.get_rmax()/2.,'Wind speed ($m.s^{-1}$)', rotation=label_position+40,ha='center',va='center')
+    plt.title("Median wind direction and mean speed for every hour")
+    plt.legend(handles=scatter.legend_elements(num=24)[0], labels=hours, title="Hours")
+    plt.show()
 
 
+def grwind24(table): #Attention ici la table à considérer c’est adata, pas tttstats !
+    fig, axes = plt.subplots(nrows=4, ncols=6, subplot_kw={'projection': 'polar'})       
+    ilines = len(table)
+    for h in range(0,24):
+        row = int(h/6)
+        col = round(6*(h/6-row))
+        dirspeed = np.zeros((36,20)) #From 0 to 360°, rounded to the 10° the more close. Speed: from 0 to 19m.s-1, the 19th taken into account all those that are greater than 19.    
+        tableau = []
+        incr = 0
+        line = table[0]
+        while line[0] < h:
+            incr += 1
+            line = table[incr]
+        while line[0] == h and incr < ilines-1 : #With this way of doing, I may forget the last line of 11p.m.
+            tableau.append(line)
+            incr += 1
+            line = table[incr]
+        for nline in tableau:
+            dir = nline[4]
+            sp = nline[3]
+            try:
+                idir = round(dir/10)
+                if idir == 36:
+                    idir = 0
+                if sp >= 19:
+                    isp = 19
+                else:
+                    isp = round(sp)
+                dirspeed[idir][isp] += 1
+            except:
+                print("NaN detected")
+        
+        angle = np.array([i for i in range(0,36)]*20) * 2 * np.pi / 36
+        ttspeed = [[i]*36 for i in range(0,20)]
+        speed = []
+        for liste in ttspeed:
+            for nb in liste:
+                speed.append(nb)
+        area = dirspeed.flatten()
+        scatter = axes[row][col].scatter(angle, speed, s=area)
+        #label_position=axes[row][col].get_rlabel_position() #Find the place for the label
+        #axes[row][col].text(np.radians(label_position+10),axes[row][col].get_rmax()/2.,'Wind speed ($m.s^{-1}$)', rotation=label_position+40,ha='center',va='center')
+        axes[row][col].set_title("{}h".format(hours[h]))
+    #fig.set_theta_offset(np.pi/2)
+    #fig.set_theta_direction(-1)
+    #fig.tight_layout()
+    fig.suptitle('Repartition of wind direction and wind speed for each hour in {}'.format(season))
+    plt.legend(handles=scatter.legend_elements("sizes", num=6)[0], labels=scatter.legend_elements("sizes", num=6)[1], title="Nb of occurrences")
+    plt.subplots_adjust(top=0.85)
+    plt.show()
+
+#handles, labels = scatter_plot.legend_elements(prop="sizes", alpha=0.6, num=4)
+#labels = ["< 5000", "< 20000", " <50000", "> 50000"]
+#legend = ax.legend(handles, labels, loc="upper right", title="Sizes")
 
 ##########################################
 #               CLASSIFICATION           #
@@ -204,7 +276,6 @@ with open(sfile, 'r', newline='', encoding='utf-8') as file:
         data.append(row)
 
     adata = np.array(data, dtype = np.float32)
-#    print(adata)
 
 
 
@@ -242,6 +313,7 @@ for h in range(0,24):
 
 hours = [i for i in range(0,24)]
 
-grmean(tttstats, toprint)
-grmed(tttstats, toprint)
-grwind(tttstats)
+#grmean(tttstats, toprint)
+#grmed(tttstats, toprint)
+grwindtotal(tttstats)
+grwind24(adata)
