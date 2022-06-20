@@ -36,7 +36,7 @@ import matplotlib.pyplot as plt
 ##########################################
 
 classification = False #To be set to False except if it is the first time of running code and the files for each season haven’t been created
-season = 'ete' #Choose which season is going to be analysed
+season = 'automne' #Choose which season is going to be analysed
 
 toprint = [1,2,3,5,6,7] #List of indexes for parameters to print. [Hour;Rainfall;Tmp;Speed of w;Direction of w;Humidity;Global radiation;Cloud cover] for the files from Lyon Bron and Lyon St-Ex
 theader = ["Rainfall", "Temperature", "Wind speed", "Humidity", "Radiation", "Cloud cover"]
@@ -154,34 +154,37 @@ def grrain(nparray):
             line = nparray[incr]
     ax.set_title("Total rainfall per hour in {}".format(season))
     ax.plot(hours, total)
-    ax.set_xticklabels(hours)
+    ax.set_xticks(hours)
+    #ax.set_xticklabels([str(h) for h in hours])
     ax.set_xlabel("Time (h)")
     ax.set_ylabel("$kg.m^{-2}$")
     plt.show()
 
 
-def grwindtotal(table):
+def grwindtotal(table, mode):
     ax = plt.subplot(111, projection='polar')
-    dir = np.zeros(24)
+    dir = mode
     speed = np.zeros(24)
     for h in range(0,24):
-        dir[h] = table[h][0][2][4] #median of wind direction
         speed[h] = table[h][0][0][3] #mean of wind speed
     colors = hours
-    angle = dir * 2 * np.pi / 360    
-    scatter = ax.scatter(angle, speed, c=colors, cmap='hsv')
+    angle = dir * 2 * np.pi / 36 
+    scatter1 = ax.scatter(angle[0], speed, c=colors, cmap='hsv', label='max')
+    ax.scatter(angle[1], speed, c=colors, cmap='hsv', label='2nd max')
+    ax.scatter(angle[2], speed, c=colors, cmap='hsv', label='3rd max')
     ax.set_theta_offset(np.pi/2)
     ax.set_theta_direction(-1)
     label_position=ax.get_rlabel_position() #Find the place for the label
     ax.text(np.radians(label_position+10),ax.get_rmax()/2.,'Wind speed ($m.s^{-1}$)', rotation=label_position+40,ha='center',va='center')
-    plt.title("Median wind direction and mean speed for every hour")
-    plt.legend(handles=scatter.legend_elements(num=24)[0], labels=hours, title="Hours")
+    plt.title("Mode of wind direction and mean wind speed for every hour")
+    plt.legend(handles=scatter1.legend_elements(num=24)[0], labels=hours, title="Hours")
     plt.show()
 
 
 def grwind24(nparray): #Attention ici la table à considérer c’est adata, pas tttstats !
     fig, axes = plt.subplots(nrows=4, ncols=6, subplot_kw={'projection': 'polar'})       
     ilines = len(nparray)
+    mode = np.zeros((3, 24)) #Table to get in output to reinject in windtotal
     for h in range(0,24):
         row = int(h/6)
         col = round(6*(h/6-row))
@@ -209,8 +212,7 @@ def grwind24(nparray): #Attention ici la table à considérer c’est adata, pas
                     isp = round(sp)
                 dirspeed[idir][isp] += 1
             except:
-                print("NaN detected")
-        
+                print("NaN detected?")        
         angle = np.array([i for i in range(0,36)]*20) * 2 * np.pi / 36
         ttspeed = [[i]*36 for i in range(0,20)]
         speed = []
@@ -222,13 +224,27 @@ def grwind24(nparray): #Attention ici la table à considérer c’est adata, pas
         #label_position=axes[row][col].get_rlabel_position() #Find the place for the label
         #axes[row][col].text(np.radians(label_position+10),axes[row][col].get_rmax()/2.,'Wind speed ($m.s^{-1}$)', rotation=label_position+40,ha='center',va='center')
         axes[row][col].set_title("{}h".format(hours[h]))
+        #Creation of table to use in global wind
+        tsum = np.sum(dirspeed, axis=0)
+        max1 = np.max(tsum)
+        loc1 = np.where(tsum==max1)[0]
+        tsum[loc1] = -1
+        max2 = np.max(tsum, axis=0)
+        loc2 = np.where(tsum==max2)[0]
+        tsum[loc2] = -1
+        max3 = np.max(tsum, axis=0)
+        loc3 = np.where(tsum==max3)[0]
+        mode[0][h] = loc1
+        mode[1][h] = loc2
+        mode[2][h] = loc3
     #fig.set_theta_offset(np.pi/2)
     #fig.set_theta_direction(-1)
     #fig.tight_layout()
-    fig.suptitle('Repartition of wind direction and wind speed for each hour in {}'.format(season))
+    fig.suptitle('3 main wind directions and wind speed for each hour in {}'.format(season))
     plt.legend(handles=scatter.legend_elements("sizes", num=6)[0], labels=scatter.legend_elements("sizes", num=6)[1], title="Nb of occurrences")
     plt.subplots_adjust(top=0.85)
     plt.show()
+    return(mode)
 
 #handles, labels = scatter_plot.legend_elements(prop="sizes", alpha=0.6, num=4)
 #labels = ["< 5000", "< 20000", " <50000", "> 50000"]
@@ -336,8 +352,8 @@ for h in range(0,24):
 
 hours = [i for i in range(0,24)]
 
-#grmean(tttstats, toprint)
-#grmed(tttstats, toprint)
-#grwindtotal(tttstats)
-#grwind24(adata)
+grmean(tttstats, toprint)
+grmed(tttstats, toprint)
+mode = grwind24(adata)
+grwindtotal(tttstats, mode)
 grrain(adata)
