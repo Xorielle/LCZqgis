@@ -137,6 +137,29 @@ def grmed(table, toprint):
     plt.show()
 
 
+def grrain(nparray):
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    total = np.zeros(24)
+    ilines = len(nparray)
+    for h in range(0,24):
+        incr = 0
+        line = nparray[0]
+        while line[0] < h:
+            incr += 1
+            line = nparray[incr]
+        while line[0] == h and incr < ilines-1 : #With this way of doing, I may forget the last line of 11p.m.
+            total[h] += line[1]
+            incr += 1
+            line = nparray[incr]
+    ax.set_title("Total rainfall per hour in {}".format(season))
+    ax.plot(hours, total)
+    ax.set_xticklabels(hours)
+    ax.set_xlabel("Time (h)")
+    ax.set_ylabel("$kg.m^{-2}$")
+    plt.show()
+
+
 def grwindtotal(table):
     ax = plt.subplot(111, projection='polar')
     dir = np.zeros(24)
@@ -156,23 +179,23 @@ def grwindtotal(table):
     plt.show()
 
 
-def grwind24(table): #Attention ici la table à considérer c’est adata, pas tttstats !
+def grwind24(nparray): #Attention ici la table à considérer c’est adata, pas tttstats !
     fig, axes = plt.subplots(nrows=4, ncols=6, subplot_kw={'projection': 'polar'})       
-    ilines = len(table)
+    ilines = len(nparray)
     for h in range(0,24):
         row = int(h/6)
         col = round(6*(h/6-row))
         dirspeed = np.zeros((36,20)) #From 0 to 360°, rounded to the 10° the more close. Speed: from 0 to 19m.s-1, the 19th taken into account all those that are greater than 19.    
         tableau = []
         incr = 0
-        line = table[0]
+        line = nparray[0]
         while line[0] < h:
             incr += 1
-            line = table[incr]
+            line = nparray[incr]
         while line[0] == h and incr < ilines-1 : #With this way of doing, I may forget the last line of 11p.m.
             tableau.append(line)
             incr += 1
-            line = table[incr]
+            line = nparray[incr]
         for nline in tableau:
             dir = nline[4]
             sp = nline[3]
@@ -313,7 +336,8 @@ for h in range(0,24):
 
 hours = [i for i in range(0,24)]
 
-grmean(tttstats, toprint)
-grmed(tttstats, toprint)
+#grmean(tttstats, toprint)
+#grmed(tttstats, toprint)
 #grwindtotal(tttstats)
 #grwind24(adata)
+grrain(adata)
