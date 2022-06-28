@@ -36,11 +36,15 @@ import matplotlib.pyplot as plt
 ##########################################
 
 classification = False #To be set to False except if it is the first time of running code and the files for each season haven’t been created
-season = 'automne' #Choose which season is going to be analysed
+season = 'ete' #Choose which season is going to be analysed
 
 toprint = [1,2,3,5,6,7] #List of indexes for parameters to print. [Hour;Rainfall;Tmp;Speed of w;Direction of w;Humidity;Global radiation;Cloud cover] for the files from Lyon Bron and Lyon St-Ex
 theader = ["Rainfall", "Temperature", "Wind speed", "Humidity", "Radiation", "Cloud cover"]
 tunits = ["$kg.m^{-2}$", "K", "$m.s^{-1}$", "$\%$", "$J.m^{-2}$", "octa"]
+
+#Option for writing in the csv as awaited by E-M
+daytosimulate = '15.07.2022'
+headerEM = ['Date', 'Time', 'SWdir/LowC', 'SWdif/MedC', 'LW/HighC', 'Air temperature', 'Relative humidity', 'Wind speed', 'Wind direction', 'Precipitation']
 
 np.set_printoptions(precision=3, suppress=True) #The arrays printed in the prompt are easier to read but are not modified. 
 
@@ -74,9 +78,14 @@ def statistics(nparray, hour):
         incr += 1
         line = nparray[incr]
     stats = [] #Each row is for all types of values, each column is for all stats for this value
+    
+    writer.writerow("Stat,HOUR,RR1,T,FF,DD,U,GLO,N")
     moyenne = np.nanmean(tableau, 0) #Ignoring NaNs
+    #writer.writerow(moyenne.tolist())
     mediane = np.nanmedian(tableau, 0)
+    writer.writerow("mediane" + ','.join(str(val) for val in mediane))
     stddev = np.nanstd(tableau, 0)
+    #writer.writerow("stddev" + stddev.tolist())
     countnonN = np.count_nonzero(~np.isnan(tableau), 0) # ~ inverts the matrix, isnan is a boolean with 1 if value is NaN, this enable to count the number of non NAN values in every column.
     stderr = stddev / np.sqrt(countnonN)
     qrt25 = np.nanquantile(tableau, 0.25, 0)
@@ -246,9 +255,17 @@ def grwind24(nparray): #Attention ici la table à considérer c’est adata, pas
     plt.show()
     return(mode)
 
-#handles, labels = scatter_plot.legend_elements(prop="sizes", alpha=0.6, num=4)
-#labels = ["< 5000", "< 20000", " <50000", "> 50000"]
-#legend = ax.legend(handles, labels, loc="upper right", title="Sizes")
+
+def clean(nparray): #Enlever les valeurs extrêmes. Taking into account the WMO recommandations
+    for line in nparray:
+        if line[1] > 2000:
+            line[1] = None
+        if line[3] > 75:
+            line[3] = None
+        if line[7] == 9:
+            line[7] = None
+    return(nparray)
+
 
 ##########################################
 #               CLASSIFICATION           #
@@ -314,20 +331,20 @@ with open(sfile, 'r', newline='', encoding='utf-8') as file:
         row = [v if v else None for v in row]
         data.append(row)
 
-    adata = np.array(data, dtype = np.float32)
+    adata = clean(np.array(data, dtype = np.float32))
 
 
 
 #moyenne = np.mean(adata, 0) #0 means mean over the column, 1 over the rows
-moyenne = np.nanmean(adata, 0) #Ignoring NaNs
-mediane = np.nanmedian(adata, 0)
-stddev = np.nanstd(adata, 0)
-variance = np.nanvar(adata, 0)
-countnonN = np.count_nonzero(~np.isnan(adata), 0) # ~ inverts the matrix, isnan is a boolean with 1 if value is NaN, this enable to count the number of non NAN values in every column.
-stderr = stddev / np.sqrt(countnonN)
-qrt25 = np.nanquantile(adata, 0.25, 0)
-qrt50 = np.nanquantile(adata, 0.5, 0)
-qrt75 = np.nanquantile(adata, 0.75, 0)
+#moyenne = np.nanmean(adata, 0) #Ignoring NaNs
+#mediane = np.nanmedian(adata, 0)
+#stddev = np.nanstd(adata, 0)
+#variance = np.nanvar(adata, 0)
+#countnonN = np.count_nonzero(~np.isnan(adata), 0) # ~ inverts the matrix, isnan is a boolean with 1 if value is NaN, this enable to count the number of non NAN values in every column.
+#stderr = stddev / np.sqrt(countnonN)
+#qrt25 = np.nanquantile(adata, 0.25, 0)
+#qrt50 = np.nanquantile(adata, 0.5, 0)
+#qrt75 = np.nanquantile(adata, 0.75, 0)
 
 #print("Mean:", moyenne)
 #print("Median:", mediane)
@@ -341,9 +358,15 @@ tttstats = []
 
 #Shape of tttstats:
 #[For each hour [[moyenne[Hour;Rainfall;Tmp;Speed of w;Direction of w;Humidity;Global radiation;Cloud cover], stderr, mediane, countnonN, tmin, qrt25, qrt75, tmax]]]
+sfile = season + '_tttstats.csv'
 
-for h in range(0,24):
-    tttstats.append(statistics(adata, h))
+with open(sfile, 'w', newline='', encoding='utf-8') as file:
+    writer = csv.writer(file)
+    for h in range(0,24):
+        stat = statistics(adata, h)
+        tttstats.append(stat)
+        writer.writerow(stat)
+    print('tttstats written in {}_tttstats.csv'.format(season))
 
 
 ##########################################
