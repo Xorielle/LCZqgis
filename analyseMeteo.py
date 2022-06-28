@@ -264,38 +264,60 @@ def grwind24(nparray): #Attention ici la table à considérer c’est adata, pas
 
 def foxwriting(tresults, mode):
     """tresults contains x list of variables (one for temperature, humidity, etc.). Each list contains 24 values, from 0a.m. to 11p.m. The aim is to transform it into the wanted format for FOX files, and to write from 5a.m. to 4a.m. of the next day."""
-    for i in range(5,29):
-        row = []
-        # Reorganising the list to begin the day at 5 a.m.
-        if i > 23:
-            h = i-24
-        else:
-            h = i
-        # Write date
-        day = idaytosimulate + i//24
-        month = eval(season+"[1]")
-        date = str(day) + '.' + month + '.2022'
-        row.append(date)
-        # Write time
-        sh = str(h)
-        hour = sh if len(sh)==2 else '0'+sh
-        time = hour + '.00.00'
-        row.append(time)
-        # Write clouds
-        #The clouds will be always written in the "Medium Clouds", as we do not have any information on the cloud height.
-        #Could we also chose to input the radiations and not the clouds? (I don’t think we can input both of them)
-        row.append('0')
-        row.append(round(tresults[5][h]))
-        row.append('0')
-        # Write temperature, humidity, wind speed
-        row.append(tresults[1][h])
-        row.append(tresults[3][h])
-        row.append(tresults[2][h])
-        # Write wind direction
-        row.append(mode[0][h]*10)
-        # Write precipitations
-        row.append('0')
-        foxwriter.writerow(row)
+    row0 = createrow(5, tresults, mode)
+    foxwriter.writerow(row0)
+    for i in range(6,29):
+        row1 = createrow(i, tresults, mode)
+        rowmid = createrowmid(row0, row1)
+        foxwriter.writerow(rowmid)
+        foxwriter.writerow(row1)
+        row0 = row1
+
+
+def createrow(i, tresults, mode):
+    row = []
+    # Reorganising the list to begin the day at 5 a.m.
+    if i > 23:
+        h = i-24
+    else:
+        h = i
+    # Write date
+    day = idaytosimulate + i//24
+    month = eval(season+"[1]")
+    date = str(day) + '.' + month + '.2022'
+    row.append(date)
+    # Write time
+    sh = str(h)
+    hour = sh if len(sh)==2 else '0'+sh
+    time = hour + ':00:00'
+    row.append(time)
+    # Write clouds
+    #The clouds will be always written in the "Medium Clouds", as we do not have any information on the cloud height.
+    #Could we also chose to input the radiations and not the clouds? (I don’t think we can input both of them)
+    row.append(0)
+    row.append(round(tresults[5][h]))
+    row.append(0)
+    # Write temperature, humidity, wind speed
+    row.append(tresults[1][h]+273.15)
+    row.append(tresults[3][h])
+    row.append(tresults[2][h])
+    # Write wind direction
+    row.append(mode[0][h]*10)
+    # Write precipitations
+    row.append(0)
+    return(row)
+
+
+def createrowmid(row0, row1):
+    row = []
+    row.append(row0[0])
+    row.append(row0[1][:3]+'30'+row0[1][5:])
+    for k in range(2,5): #Clouds
+        row.append(int((row0[k]+row1[k])/2))
+    for k in range(5,10):
+        row.append((row0[k]+row1[k])/2)
+    return(row)
+
 
 
 def clean(nparray): #Enlever les valeurs extrêmes. Taking into account the WMO recommandations
