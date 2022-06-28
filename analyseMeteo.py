@@ -17,6 +17,8 @@ One line of data has following format (conventional csv format):
 
 If using other kind of format, it is possible to use the bash script "convert.sh" before the python analysing script to modify your text file before processing it. Adapt the script to what you have.
 
+Script convenient for time interval of one hour.
+
 Myrtille Grulois − June 2022
 """
 
@@ -26,6 +28,7 @@ Myrtille Grulois − June 2022
 ##########################################
 
 from cmath import nan
+from xml.etree.ElementTree import tostring
 import scipy
 import numpy as np
 import csv
@@ -43,8 +46,8 @@ theader = ["Rainfall", "Temperature", "Wind speed", "Humidity", "Radiation", "Cl
 tunits = ["$kg.m^{-2}$", "K", "$m.s^{-1}$", "$\%$", "$J.m^{-2}$", "octa"]
 
 #Option for writing in the csv as awaited by E-M
-daytosimulate = '15.07.2022'
-headerEM = ['Date', 'Time', 'SWdir/LowC', 'SWdif/MedC', 'LW/HighC', 'Air temperature', 'Relative humidity', 'Wind speed', 'Wind direction', 'Precipitation']
+idaytosimulate = 15
+headerEM = ['Date', 'Time', 'SWdir/LowC', 'SWdif/MedC', 'LW/HighC', 'Air temperature', 'Relative humidity', 'Wind speed', 'Wind direction', 'Precipitation'] #Please don’t change those without a good reason.
 
 np.set_printoptions(precision=3, suppress=True) #The arrays printed in the prompt are easier to read but are not modified. 
 
@@ -99,6 +102,7 @@ def statistics(nparray, hour):
 def grmean(table, toprint):
     nbgr = len(toprint)
     fig, axes = plt.subplots(nrows=int((nbgr+1)/2), ncols=2)
+    ttmean = []
     for i in range(0,nbgr):
         var = toprint[i]
         row = int(i/2)
@@ -112,11 +116,13 @@ def grmean(table, toprint):
         axes[row][col].errorbar(hours, ymean, yerr=ystder, fmt='o', capsize=4)
         axes[row][col].set_xlabel("Time (h)")
         axes[row][col].set_ylabel(tunits[i])
+        ttmean.append(ymean)
     fig.tight_layout(h_pad=2)
     fig.tight_layout()
     fig.suptitle('Mean and standard error in {} for:'.format(season))
     plt.subplots_adjust(top=0.85)
     plt.show()
+    return(ttmean)
 
 
 def grmed(table, toprint):
@@ -256,6 +262,42 @@ def grwind24(nparray): #Attention ici la table à considérer c’est adata, pas
     return(mode)
 
 
+def foxwriting(tresults, mode):
+    """tresults contains x list of variables (one for temperature, humidity, etc.). Each list contains 24 values, from 0a.m. to 11p.m. The aim is to transform it into the wanted format for FOX files, and to write from 5a.m. to 4a.m. of the next day."""
+    for i in range(5,29):
+        row = []
+        # Reorganising the list to begin the day at 5 a.m.
+        if i > 23:
+            h = i-24
+        else:
+            h = i
+        # Write date
+        day = idaytosimulate + i//24
+        month = eval(season+"[1]")
+        date = str(day) + '.' + month + '.2022'
+        row.append(date)
+        # Write time
+        sh = str(h)
+        hour = sh if len(sh)==2 else '0'+sh
+        time = hour + '.00.00'
+        row.append(time)
+        # Write clouds
+        #The clouds will be always written in the "Medium Clouds", as we do not have any information on the cloud height.
+        #Could we also chose to input the radiations and not the clouds? (I don’t think we can input both of them)
+        row.append('0')
+        row.append(round(tresults[5][h]))
+        row.append('0')
+        # Write temperature, humidity, wind speed
+        row.append(tresults[1][h])
+        row.append(tresults[3][h])
+        row.append(tresults[2][h])
+        # Write wind direction
+        row.append(mode[0][h]*10)
+        # Write precipitations
+        row.append('0')
+        foxwriter.writerow(row)
+
+
 def clean(nparray): #Enlever les valeurs extrêmes. Taking into account the WMO recommandations
     for line in nparray:
         if line[1] > 2000:
@@ -375,8 +417,19 @@ with open(sfile, 'w', newline='', encoding='utf-8') as file:
 
 hours = [i for i in range(0,24)]
 
-grmean(tttstats, toprint)
-grmed(tttstats, toprint)
+ttmean = grmean(tttstats, toprint)
+#grmed(tttstats, toprint)
 mode = grwind24(adata)
-grwindtotal(tttstats, mode)
-grrain(adata)
+#grwindtotal(tttstats, mode)
+#grrain(adata)
+
+sfileEM = season + 'FOX.csv'
+
+# Creation of csv file adapted to the format wanted by EM to create the FOX file (meteo simulation).
+# Beginning at 5a.m. on the 15 of the month (depending on the season, to modify in the parameters at the beginning of the file) and ending at 4a.m. the next day.
+# For the moment, the time interval is set to 1h (depending on entrance csv file)
+# What kind of stat is being used: 'Date', 'Time', 'SWdir/LowC', 'SWdif/MedC', 'LW/HighC', 'Air temperature', 'Relative humidity', 'Wind speed', 'Wind direction', 'Precipitation']
+with open(sfileEM, 'w', newline='', encoding='utf-8') as fox:
+    foxwriter = csv.writer(fox, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    foxwriter.writerow(headerEM)
+    foxwriting(ttmean, mode)
